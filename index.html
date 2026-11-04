@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Brain Dump</title>
+<meta name="description" content="Quick-capture task list. Offline, private, no account.">
+<meta name="theme-color" content="#e6e0d2">
+<meta name="color-scheme" content="light dark">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Brain Dump">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link href="https://fonts.googleapis.com/css2?family=Domine:wght@700&display=swap" rel="stylesheet" crossorigin>
+<link rel="stylesheet" href="style.css">
+<!-- Runs before paint so there is no theme flash. First visit follows the system. -->
+<script>
+  (function () {
+    var r = document.documentElement, t;
+    try { t = localStorage.getItem("theme"); } catch (e) {}
+    if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    r.dataset.theme = t;
+    document.querySelector('meta[name="theme-color"]').content = t === "dark" ? "#262624" : "#e6e0d2";
+  })();
+</script>
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<main>
+  <header class="top">
+    <div class="head">
+      <h1>Brain Dump</h1>
+      <span class="count" id="count"></span>
+      <button class="iconbtn" id="theme" type="button" aria-label="Toggle theme">◐</button>
+    </div>
+    <form id="f">
+      <input id="in" placeholder="What's on your mind?" autocomplete="off" enterkeyhint="done" aria-label="New task">
+      <button>Add</button>
+    </form>
+    <p class="hint">Press <kbd>Enter</kbd> to add · <kbd>/</kbd> to focus from anywhere · paste links, they become chips · click text to edit · drag <b>⋮⋮</b> to reorder</p>
+  </header>
+  <ul id="list"></ul>
+  <div class="foot">
+    <span id="meta"></span>
+    <button id="clear" type="button" hidden>Clear done</button>
+    <span class="sp"></span>
+    <button id="export" type="button">Export</button>
+    <button id="import" type="button">Import</button>
+    <input id="file" type="file" accept="application/json,.json" hidden>
+  </div>
+</main>
+</body>
+</html>
