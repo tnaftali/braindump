@@ -1,12 +1,13 @@
 // Offline cache, stale-while-revalidate: answer from cache, refresh it in the background.
 // A deploy shows up on the second launch. Bump VERSION to drop the old cache outright.
-const VERSION = "v6";
+const VERSION = "v7";
 const SHELL = [
   "./",
   "index.html",
   "style.css",
   "app.js",
   "logic.js",
+  "sync.js",
   "manifest.webmanifest",
   "icon.svg",
   "icon-180.png",
@@ -29,7 +30,7 @@ self.addEventListener("activate", (e) => {
 });
 
 self.addEventListener("fetch", (e) => {
-  if (e.request.method !== "GET") return;
+  if (e.request.method !== "GET" || new URL(e.request.url).hostname.endsWith(".workers.dev")) return; // sync API must never come from cache
   e.respondWith(
     caches.open(VERSION).then(async (cache) => {
       const cached = await cache.match(e.request, { ignoreSearch: true });

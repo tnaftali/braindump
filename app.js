@@ -1,11 +1,21 @@
-import { linkify, move, newId, parseBackup } from "./logic.js";
+import { linkify, merge, move, newId, normalize, parseBackup, sig } from "./logic.js";
+import { newCode, parseCode, sync } from "./sync.js";
 
 const KEY = "braindump.tasks";
+const META = "braindump.meta"; // { tomb, ou }: deleted ids and last reorder time, needed to merge
+const SYNC = "braindump.sync"; // the sync code, when sync is on
 const $ = (id) => document.getElementById(id);
 const list = $("list");
 
-// shortcut: localStorage only, no sync between devices; use Export/Import to move data
 let tasks = load();
+let meta = loadMeta();
+const now = () => Date.now();
+const touch = (t) => { t.u = now(); };
+const drop = (t) => { meta.tomb[t.id] = now(); };
+
+function loadMeta() {
+  try { const m = normalize({ tasks: [], ...JSON.parse(localStorage.getItem(META)) }); return { tomb: m.tomb, ou: m.ou }; } catch { return { tomb: {}, ou: 0 }; }
+}
 
 function load() {
   let raw = null;
@@ -19,8 +29,14 @@ function load() {
   }
 }
 function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(tasks)); } catch { alert("Couldn't save. Export a backup."); }
+  const cut = now() - 90 * 864e5; // shortcut: deletes are forgotten after 90 days; a device offline longer can bring deleted tasks back
+  for (const id in meta.tomb) if (meta.tomb[id] < cut) delete meta.tomb[id];
+  try {
+    localStorage.setItem(KEY, JSON.stringify(tasks));
+    localStorage.setItem(META, JSON.stringify(meta));
+  } catch { alert("Couldn't save. Export a backup."); }
 }
+const commit = () => { save(); render(); queue(); };
 const byId = (el) => tasks.find((t) => t.id === el.closest("li").dataset.id);
 
 function fill(el, text) {
@@ -65,29 +81,31 @@ $("f").onsubmit = (e) => {
   e.preventDefault();
   const text = $("in").value.trim();
   if (!text) return;
-  tasks.unshift({ id: newId(), text, done: false });
+  tasks.unshift({ id: newId(), text, done: false, u: now() });
   $("in").value = "";
-  save(); render();
+  commit();
 };
 
-list.addEventListener("change", (e) => { byId(e.target).done = e.target.checked; save(); render(); });
+list.addEventListener("change", (e) => { const t = byId(e.target); t.done = e.target.checked; touch(t); commit(); });
 list.addEventListener("click", (e) => {
   if (e.target.classList.contains("t") && !e.target.isContentEditable) return edit(e.target);
   if (!e.target.classList.contains("x")) return;
-  tasks = tasks.filter((t) => t !== byId(e.target)); save(); render();
+  const t = byId(e.target);
+  drop(t); tasks = tasks.filter((x) => x !== t); commit();
 });
 list.addEventListener("focusout", (e) => {
   if (!e.target.classList.contains("t") || !e.target.isContentEditable) return;
   const t = byId(e.target), text = e.target.textContent.trim();
-  if (text) t.text = text; else tasks = tasks.filter((x) => x !== t);
-  save(); render();
+  if (!text) { drop(t); tasks = tasks.filter((x) => x !== t); }
+  else if (text !== t.text) { t.text = text; touch(t); }
+  commit();
 });
 list.addEventListener("keydown", (e) => {
   if (e.key !== "Enter" || !e.target.classList.contains("t")) return;
   e.preventDefault();
   if (e.target.isContentEditable) { e.target.blur(); $("in").focus(); } else edit(e.target);
 });
-$("clear").onclick = () => { tasks = tasks.filter((t) => !t.done); save(); render(); };
+$("clear").onclick = () => { tasks.filter((t) => t.done).forEach(drop); tasks = tasks.filter((t) => !t.done); commit(); };
 
 // Drag to reorder with pointer events: works for mouse and touch. Array order is display order;
 // open and done groups keep their own relative order.
@@ -115,7 +133,7 @@ list.addEventListener("pointermove", (e) => {
 });
 const endDrag = (e) => {
   if (!drag) return;
-  if (e.type === "pointerup" && drag.over) { tasks = move(tasks, drag.id, drag.over.dataset.id, drag.before); save(); }
+  if (e.type === "pointerup" && drag.over) { tasks = move(tasks, drag.id, drag.over.dataset.id, drag.before); meta.ou = now(); save(); queue(); }
   drag = null;
   render();
 };
@@ -139,7 +157,8 @@ $("file").onchange = async (e) => {
   try {
     const next = parseBackup(await file.text());
     if (!confirm(`Replace your ${tasks.length} tasks with ${next.length} from this file?`)) return;
-    tasks = next; save(); render();
+    tasks.filter((t) => !next.some((n) => n.id === t.id)).forEach(drop);
+    tasks = next.map((t) => ({ ...t, u: now() })); meta.ou = now(); commit();
   } catch { alert("That file isn't a Brain Dump backup."); }
 };
 
@@ -154,9 +173,86 @@ $("theme").onclick = () => {
 
 // Another tab or the installed app changed the data.
 addEventListener("storage", (e) => {
-  if (e.key !== KEY || document.activeElement?.isContentEditable) return;
-  tasks = load(); render();
+  if ((e.key !== KEY && e.key !== META) || document.activeElement?.isContentEditable) return;
+  tasks = load(); meta = loadMeta(); render();
 });
+
+// ---- Sync ----
+// On when a sync code is stored. Tasks merge with the encrypted copy on the server; see sync.js.
+let code = null, timer = 0, running = false;
+try { code = localStorage.getItem(SYNC); } catch {}
+const side = () => ({ tasks, tomb: meta.tomb, ou: meta.ou });
+const busy = () => drag || document.activeElement?.isContentEditable;
+const LABEL = { off: "Sync", syncing: "Syncing…", ok: "Synced ✓", offline: "Offline", error: "Sync failed" };
+function setStatus(s) {
+  $("syncb").textContent = LABEL[s];
+  $("st").textContent = s === "error" ? "Last sync failed. It retries on the next change." : s === "offline" ? "No connection. It syncs when you are back online." : "";
+}
+
+function queue(ms = 3000) {
+  if (!code) return;
+  clearTimeout(timer);
+  timer = setTimeout(runSync, ms);
+}
+
+async function runSync() {
+  if (!code || running) return;
+  if (!navigator.onLine) return setStatus("offline");
+  if (busy()) return queue(1500);
+  running = true; setStatus("syncing");
+  const start = sig(side());
+  try {
+    const out = await sync(code, side());
+    if (busy()) { setStatus("ok"); return queue(1500); }
+    const m = merge(side(), out); // folds in edits made while the request ran
+    if (sig(m) !== sig(side())) { tasks = m.tasks; meta = { tomb: m.tomb, ou: m.ou }; save(); render(); }
+    setStatus("ok");
+  } catch { setStatus("error"); } finally {
+    running = false;
+    if (code && sig(side()) !== start) queue(500);
+  }
+}
+
+function setCode(c) {
+  code = c;
+  try { c ? localStorage.setItem(SYNC, c) : localStorage.removeItem(SYNC); } catch {}
+  showDialog();
+  if (c) runSync(); else setStatus("off");
+}
+
+function showDialog() {
+  $("offv").hidden = !!code;
+  $("onv").hidden = !code;
+  $("codev").value = code ?? "";
+}
+const copy = (text, btn) => navigator.clipboard?.writeText(text).then(() => { const o = btn.textContent; btn.textContent = "Copied ✓"; setTimeout(() => (btn.textContent = o), 1500); });
+const link = () => `${location.origin}${location.pathname}#sync=${code}`;
+
+$("syncb").onclick = () => { showDialog(); $("dlg").showModal(); };
+$("close").onclick = () => $("dlg").close();
+$("on").onclick = () => setCode(newCode());
+$("joinb").onclick = () => {
+  const c = parseCode($("join").value);
+  if (c) { $("join").value = ""; setCode(c); } else $("join").setCustomValidity("Not a sync code");
+  $("join").reportValidity();
+};
+$("join").oninput = () => $("join").setCustomValidity("");
+$("copyl").onclick = (e) => copy(link(), e.target);
+$("copyc").onclick = (e) => copy(code, e.target);
+$("now").onclick = () => runSync();
+$("offb").onclick = () => { if (confirm("Turn off sync on this device? Your tasks here stay. The synced copy stays on the server.")) setCode(null); };
+
+// A #sync=<code> link joins this device. Confirm first: a link from someone else would upload your tasks to their list.
+const joinHash = location.hash.match(/^#sync=([A-Za-z0-9_-]{22})$/);
+if (joinHash) {
+  history.replaceState(null, "", location.pathname + location.search); // the code is a secret, keep it out of the URL bar
+  if (joinHash[1] !== code && confirm("Sync this device with the shared list from that link? Your tasks here merge into it.")) setCode(joinHash[1]);
+}
+
+addEventListener("online", () => queue(500));
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") queue(300); });
+setInterval(() => { if (document.visibilityState === "visible") queue(0); }, 60000); // pick up changes from other devices while the app stays open
+queue(300);
 addEventListener("keydown", (e) => {
   const a = document.activeElement;
   if (e.key === "/" && !/INPUT|TEXTAREA/.test(a.tagName) && !a.isContentEditable) { e.preventDefault(); $("in").focus(); }

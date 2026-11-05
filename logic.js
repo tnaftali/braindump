@@ -47,6 +47,45 @@ export function parseBackup(text) {
       let id = String(t.id ?? "");
       if (!id || seen.has(id)) id = newId();
       seen.add(id);
-      return { id, text: t.text.trim(), done: t.done === true };
+      return { id, text: t.text.trim(), done: t.done === true, u: Number.isFinite(t.u) ? t.u : 0 };
     });
 }
+
+// ---- Sync merge ----
+// A side is { tasks: [{id, text, done, u}], tomb: { id: deletedAt }, ou }. `u` is the last edit time,
+// `ou` the last reorder time. shortcut: device clocks decide who wins, so a badly skewed clock can lose an edit.
+
+// Clean a side that came from storage or the network. Drops anything malformed.
+export function normalize(s) {
+  const tasks = Array.isArray(s?.tasks) ? s.tasks : [];
+  const tomb = {};
+  for (const [id, ts] of Object.entries(s?.tomb ?? {})) if (Number.isFinite(ts)) tomb[id] = ts;
+  const seen = new Set();
+  return {
+    tasks: tasks
+      .filter((t) => t && typeof t.id === "string" && typeof t.text === "string" && t.text.trim() && !seen.has(t.id) && seen.add(t.id))
+      .map((t) => ({ id: t.id, text: t.text.trim(), done: t.done === true, u: Number.isFinite(t.u) ? t.u : 0 })),
+    tomb,
+    ou: Number.isFinite(s?.ou) ? s.ou : 0,
+  };
+}
+
+// Newest edit wins per task. A delete beats a task not edited since. The side with the newer `ou`
+// sets the order; tasks only the other side has go on top.
+export function merge(a, b) {
+  const tomb = { ...a.tomb };
+  for (const [id, ts] of Object.entries(b.tomb)) tomb[id] = Math.max(tomb[id] ?? 0, ts);
+  const byId = new Map();
+  for (const t of [...b.tasks, ...a.tasks]) { // a goes last, so a wins a tie
+    const cur = byId.get(t.id);
+    if (!cur || t.u >= cur.u) byId.set(t.id, t);
+  }
+  const [win, lose] = a.ou >= b.ou ? [a, b] : [b, a];
+  const known = new Set(win.tasks.map((t) => t.id));
+  const order = [...lose.tasks.map((t) => t.id).filter((id) => !known.has(id)), ...win.tasks.map((t) => t.id)];
+  const tasks = order.map((id) => byId.get(id)).filter((t) => t.u > (tomb[t.id] ?? -1));
+  return { tasks, tomb, ou: Math.max(a.ou, b.ou) };
+}
+
+// Cheap equality for two sides, used to skip no-op saves and uploads.
+export const sig = (s) => JSON.stringify([s.tasks.map((t) => [t.id, t.text, t.done, t.u]), Object.entries(s.tomb).sort(), s.ou]);

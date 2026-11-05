@@ -1,0 +1,8 @@
+name = "braindump-sync"
+main = "index.js"
+compatibility_date = "2026-01-01"
+account_id = "3371168947cb48ae7e818fd8398131ee"
+
+[[kv_namespaces]]
+binding = "BLOBS"
+id = "4ec5b778210942c59d51a6231059deff"

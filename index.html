@@ -47,10 +47,36 @@
     <span id="meta"></span>
     <button id="clear" type="button" hidden>Clear done</button>
     <span class="sp"></span>
+    <button id="syncb" type="button">Sync</button>
     <button id="export" type="button">Export</button>
     <button id="import" type="button">Import</button>
     <input id="file" type="file" accept="application/json,.json" hidden>
   </div>
 </main>
+<dialog id="dlg" aria-labelledby="dlgt">
+  <h2 id="dlgt">Sync devices</h2>
+  <div id="offv">
+    <p>Keep the same tasks on every device. Your tasks are encrypted on this device before they leave it. The server stores only unreadable data.</p>
+    <button class="primary" id="on" type="button">Turn on sync</button>
+    <p class="sub">Already syncing on another device? Paste its sync code or link.</p>
+    <div class="row">
+      <input id="join" placeholder="Sync code or link" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Sync code or link">
+      <button id="joinb" type="button">Join</button>
+    </div>
+  </div>
+  <div id="onv" hidden>
+    <p>Sync is on. This code is the key to your tasks: anyone who has it can read and edit them. Share it only with your own devices.</p>
+    <input id="codev" readonly aria-label="Sync code" onfocus="this.select()">
+    <div class="row">
+      <button id="copyl" type="button">Copy link</button>
+      <button id="copyc" type="button">Copy code</button>
+      <button id="now" type="button">Sync now</button>
+    </div>
+    <p class="sub">On your other device: open the link, or choose Sync → paste the code. On iPhone the installed app and Safari keep separate data, so join inside the app.</p>
+    <button class="danger" id="offb" type="button">Turn off on this device</button>
+  </div>
+  <p id="st" class="st" role="status"></p>
+  <button class="close" id="close" type="button">Close</button>
+</dialog>
 </body>
 </html>
