@@ -1,10 +1,49 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#a34c31"/>
-  <g fill="none" stroke="#ede8dc" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="150" cy="170" r="30" fill="#ede8dc"/>
-    <path d="M138 171l9 9 16-18" stroke="#a34c31" stroke-width="12"/>
-    <circle cx="150" cy="256" r="30"/>
-    <circle cx="150" cy="342" r="30"/>
-    <path d="M225 170h150M225 256h150M225 342h110"/>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="30%" r="80%">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f3ecdc"/>
+    </radialGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".9"/>
+      <stop offset=".18" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="pink" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbb6c6"/>
+      <stop offset="1" stop-color="#ec7a97"/>
+    </linearGradient>
+    <linearGradient id="cb" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ef8aa4"/>
+      <stop offset="1" stop-color="#d95f80"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="50"/>
+    </filter>
+    <path id="cerebrum" d="M250 600C170 580 140 480 190 410C180 330 250 270 330 280C360 200 470 170 540 215C600 160 720 180 750 260C840 270 890 350 860 430C920 480 900 580 830 610C800 680 720 700 660 670C600 720 500 720 450 670C380 700 290 670 250 600Z"/>
+    <path id="cereb" d="M650 690C680 650 780 640 830 680C850 720 800 765 740 765C690 765 650 735 650 690Z"/>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#sheen)" opacity=".6"/>
+  <g transform="translate(-18 45)">
+    <g fill="#ec5f86" opacity=".85" filter="url(#glow)"><use href="#cerebrum"/><use href="#cereb"/></g>
+    <use href="#cereb" fill="url(#cb)"/>
+    <g fill="none" stroke="#b83f66" stroke-opacity=".55" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M680 700C720 690 770 695 800 705M672 725C720 718 770 722 805 735M690 748C720 745 750 747 770 752"/>
+    </g>
+    <use href="#cerebrum" fill="url(#pink)"/>
+    <g fill="none" stroke="#c9486f" stroke-width="15" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M470 228C440 282 500 302 470 356C450 396 500 412 480 458"/>
+      <path d="M650 218C620 272 680 297 655 347C640 387 690 402 670 452"/>
+      <path d="M330 288C360 322 320 352 345 392"/>
+      <path d="M780 288C750 332 800 352 775 397C760 432 805 452 790 492"/>
+      <path d="M268 545C330 545 390 505 440 525C480 540 510 505 560 525"/>
+      <path d="M252 452C302 442 332 472 312 507"/>
+      <path d="M560 572C600 562 630 592 610 627"/>
+      <path d="M700 522C745 537 750 582 715 602"/>
+      <path d="M400 592C440 602 470 632 440 662"/>
+      <path d="M560 422C590 442 585 472 560 487"/>
+      <path d="M842 542C812 562 802 592 817 600"/>
+    </g>
+    <use href="#cerebrum" fill="none" stroke="#ffffff" stroke-opacity=".35" stroke-width="6" transform="translate(-4 -4)"/>
   </g>
 </svg>
