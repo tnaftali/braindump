@@ -25,6 +25,7 @@ export const parseCode = (s) => {
 // Three unrelated hashes of the code: the address, the write key and the encryption key.
 // Knowing the address (all the server and its logs see) reveals neither of the others.
 export async function derive(code) {
+  if (!globalThis.crypto?.subtle) throw new Error("encryption needs HTTPS or localhost");
   const hex = async (s) => [...(await sha(s))].map((b) => b.toString(16).padStart(2, "0")).join("");
   const key = await crypto.subtle.importKey("raw", await sha("key:" + code), "AES-GCM", false, ["encrypt", "decrypt"]);
   return { id: await hex("id:" + code), wk: await hex("w:" + code), key };

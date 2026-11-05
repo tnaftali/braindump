@@ -184,9 +184,9 @@ try { code = localStorage.getItem(SYNC); } catch {}
 const side = () => ({ tasks, tomb: meta.tomb, ou: meta.ou });
 const busy = () => drag || document.activeElement?.isContentEditable;
 const LABEL = { off: "Sync", syncing: "Syncing…", ok: "Synced ✓", offline: "Offline", error: "Sync failed" };
-function setStatus(s) {
+function setStatus(s, detail = "") {
   $("syncb").textContent = LABEL[s];
-  $("st").textContent = s === "error" ? "Last sync failed. It retries on the next change." : s === "offline" ? "No connection. It syncs when you are back online." : "";
+  $("st").textContent = s === "error" ? `Last sync failed: ${detail}. It retries on the next change.` : s === "offline" ? "No connection. It syncs when you are back online." : "";
 }
 
 function queue(ms = 3000) {
@@ -207,7 +207,7 @@ async function runSync() {
     const m = merge(side(), out); // folds in edits made while the request ran
     if (sig(m) !== sig(side())) { tasks = m.tasks; meta = { tomb: m.tomb, ou: m.ou }; save(); render(); }
     setStatus("ok");
-  } catch { setStatus("error"); } finally {
+  } catch (e) { console.error("sync failed", e); setStatus("error", e?.message ?? String(e)); } finally {
     running = false;
     if (code && sig(side()) !== start) queue(500);
   }
