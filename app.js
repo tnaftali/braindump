@@ -186,6 +186,8 @@ const busy = () => drag || document.activeElement?.isContentEditable;
 const LABEL = { off: "Sync", syncing: "Syncing…", ok: "Synced ✓", offline: "Offline", error: "Sync failed" };
 function setStatus(s, detail = "") {
   $("syncb").textContent = LABEL[s];
+  $("refresh").classList.toggle("spin", s === "syncing");
+  $("refresh").title = s === "error" ? `Sync failed: ${detail}` : "Sync now";
   $("st").textContent = s === "error" ? `Last sync failed: ${detail}. It retries on the next change.` : s === "offline" ? "No connection. It syncs when you are back online." : "";
 }
 
@@ -229,6 +231,7 @@ const copy = (text, btn) => navigator.clipboard?.writeText(text).then(() => { co
 const link = () => `${location.origin}${location.pathname}#sync=${code}`;
 
 $("syncb").onclick = () => { showDialog(); $("dlg").showModal(); };
+$("refresh").onclick = () => (code ? runSync() : $("syncb").click()); // sync off: open the dialog to turn it on
 $("close").onclick = () => $("dlg").close();
 $("on").onclick = () => setCode(newCode());
 $("joinb").onclick = () => {
@@ -260,4 +263,11 @@ addEventListener("keydown", (e) => {
 
 render();
 navigator.storage?.persist?.().catch(() => {});
-navigator.serviceWorker?.register("sw.js").catch(() => {}); // needs HTTPS or localhost
+document.addEventListener("gesturestart", (e) => e.preventDefault()); // iOS ignores user-scalable=no, so block pinch here
+if (navigator.serviceWorker) {
+  // A new app version took over: reload once so the open app runs it now, not on the next launch.
+  const had = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (had && !reloaded && !busy()) { reloaded = true; location.reload(); } });
+  navigator.serviceWorker.register("sw.js").catch(() => {}); // needs HTTPS or localhost
+}

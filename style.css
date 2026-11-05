@@ -19,7 +19,11 @@
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; touch-action: manipulation; overscroll-behavior-y: none; } /* no double-tap zoom, no rubber-band: acts like an app */
+body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; } /* app feel: no selecting UI text */
+input, [contenteditable] { -webkit-user-select: text; user-select: text; } /* but typing and editing still work */
+.iconbtn.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 body {
   margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 var(--sans); min-height: 100dvh;
   padding: 0 max(16px, env(safe-area-inset-right)) calc(48px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
@@ -77,7 +81,7 @@ dialog p { margin: 0 0 12px; font-size: 14px; color: var(--muted); }
 dialog p.sub { margin-top: 16px; }
 dialog .st { color: var(--accent); min-height: 1.4em; margin: 8px 0 0; }
 dialog .row { display: flex; flex-wrap: wrap; gap: 8px; }
-dialog input { flex: 1; min-width: 0; width: 100%; height: 44px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 0 12px; font: 15px var(--mono); outline: none; margin-bottom: 8px; }
+dialog input { flex: 1; min-width: 0; width: 100%; height: 44px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 0 12px; font: 16px var(--mono); outline: none; margin-bottom: 8px; }
 dialog .row input { width: auto; margin: 0; }
 dialog input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 dialog button { height: 44px; background: var(--well); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 0 16px; font: 600 14px var(--sans); cursor: pointer; }
