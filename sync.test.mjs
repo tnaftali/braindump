@@ -92,6 +92,13 @@ test("Worker: bad path 404, stale If-Match 412, oversize 413", async () => {
   assert.equal((await fetch(API + key, { method: "PUT", headers: w, body: "z".repeat(300 * 1024) })).status, 413);
 });
 
+test("Worker: weak ETag (W/\"1\", as Cloudflare sends after compression) still matches", async () => {
+  fakeWorker();
+  const key = "d".repeat(64), w = { "X-Write-Key": "b".repeat(64) };
+  await fetch(API + key, { method: "PUT", headers: { ...w, "If-Match": '"0"' }, body: "x" });
+  assert.equal((await fetch(API + key, { method: "PUT", headers: { ...w, "If-Match": 'W/"1"' }, body: "y" })).status, 204);
+});
+
 test("Worker: writes need the write key the first PUT stored", async () => {
   fakeWorker();
   const key = "c".repeat(64);

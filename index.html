@@ -29,13 +29,20 @@
 <script type="module" src="app.js"></script>
 </head>
 <body>
+<div class="app">
+<aside id="side" aria-label="Views">
+  <div class="brand">🧠 Brain Dump</div>
+  <nav id="tabs"></nav>
+</aside>
+<div id="scrim"></div>
 <main>
   <header class="top">
     <div class="head">
-      <h1>🧠 Brain Dump</h1>
+      <button class="iconbtn" id="menu" type="button" aria-label="Open menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      <h1 id="vt">Today</h1>
       <span class="count" id="count"></span>
-      <button class="iconbtn" id="refresh" type="button" aria-label="Sync now" title="Sync now">⟳</button>
-      <button class="iconbtn" id="theme" type="button" aria-label="Toggle theme">◐</button>
+      <button class="iconbtn" id="refresh" type="button" aria-label="Sync now" title="Sync now"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg></button>
+      <button class="iconbtn" id="theme" type="button" aria-label="Toggle theme"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button>
     </div>
     <form id="f">
       <input id="in" placeholder="What's on your mind?" autocomplete="off" enterkeyhint="done" aria-label="New task">
@@ -46,7 +53,10 @@
   <ul id="list"></ul>
   <div class="foot">
     <span id="meta"></span>
-    <button id="clear" type="button" hidden>Clear done</button>
+    <button id="clear" type="button" hidden>Delete all completed</button>
+    <button id="lren" type="button" hidden>Rename area</button>
+    <button id="hadd" type="button" hidden>Add heading</button>
+    <button id="ldel" type="button" hidden>Delete area</button>
     <span class="sp"></span>
     <button id="syncb" type="button">Sync</button>
     <button id="export" type="button">Export</button>
@@ -54,6 +64,39 @@
     <input id="file" type="file" accept="application/json,.json" hidden>
   </div>
 </main>
+</div>
+<dialog id="whend" aria-labelledby="whent">
+  <h2 id="whent">Date, repeat and area</h2>
+  <div id="wlistrow" hidden>
+    <p class="sub">Area</p>
+    <select id="wlist" aria-label="Area"></select>
+  </div>
+  <div id="whrow" hidden>
+    <p class="sub">Heading</p>
+    <select id="whead" aria-label="Heading"></select>
+  </div>
+  <div class="row">
+    <button type="button" data-d="today">Today</button>
+    <button type="button" data-d="tomorrow">Tomorrow</button>
+    <button type="button" data-d="monday">Next week</button>
+  </div>
+  <input type="date" id="wdate" aria-label="Date">
+  <p class="sub">Repeat</p>
+  <div class="row">
+    <select id="runit" aria-label="Repeat unit">
+      <option value="">Never</option><option value="day">Days</option><option value="week">Weeks</option><option value="month">Months</option><option value="year">Years</option>
+    </select>
+    <input type="number" id="rn" min="1" max="365" value="1" inputmode="numeric" aria-label="Every how many">
+  </div>
+  <select id="rmode" aria-label="Repeat mode">
+    <option value="schedule">On a schedule</option><option value="after">After completion</option>
+  </select>
+  <p class="st" id="rhelp"></p>
+  <div class="row">
+    <button class="danger" id="wclear" type="button">Clear date</button>
+    <button class="close" id="wclose" type="button">Done</button>
+  </div>
+</dialog>
 <dialog id="dlg" aria-labelledby="dlgt">
   <h2 id="dlgt">Sync devices</h2>
   <div id="offv">

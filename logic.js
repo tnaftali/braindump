@@ -35,6 +35,87 @@ export function move(list, id, targetId, before) {
   return rest;
 }
 
+// ---- Dates and repeats ----
+// A date is a local-day string "YYYY-MM-DD": it compares as text, with no time of day and no zones.
+// A task may carry `date` and, only with a date, `rep` = { n, unit: day|week|month|year, mode: schedule|after }.
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const UNITS = ["day", "week", "month", "year"];
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const pad = (n) => String(n).padStart(2, "0");
+const fmt = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`; // m is 0-based
+const parts = (s) => { const [y, m, d] = s.split("-").map(Number); return [y, m - 1, d]; };
+const dow = (s) => { const [y, m, d] = parts(s); return new Date(Date.UTC(y, m, d)).getUTCDay(); };
+
+export const today = (d = new Date()) => fmt(d.getFullYear(), d.getMonth(), d.getDate());
+
+export function addDays(s, n) {
+  const [y, m, d] = parts(s), t = new Date(Date.UTC(y, m, d + n));
+  return fmt(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate());
+}
+function addMonths(s, n) {
+  const [y, m, d] = parts(s), i = y * 12 + m + n, ny = Math.floor(i / 12), nm = i % 12;
+  return fmt(ny, nm, Math.min(d, new Date(Date.UTC(ny, nm + 1, 0)).getUTCDate())); // the 31st clamps to the month's last day
+}
+export const addInterval = (s, n, unit) => (unit === "day" ? addDays(s, n) : unit === "week" ? addDays(s, 7 * n) : addMonths(s, unit === "year" ? 12 * n : n));
+export const nextMonday = (now) => addDays(now, (8 - dow(now)) % 7 || 7);
+
+// The date a repeating task moves to when completed. "schedule" keeps the rhythm and skips every
+// missed slot (one next date, never a backlog); "after" counts from today.
+// shortcut: a clamped month (31st -> 28th) does not snap back to the 31st, upgrade if that matters.
+export function nextDate(date, rep, now) {
+  if (rep.mode === "after") return addInterval(now, rep.n, rep.unit);
+  for (let k = 1; k < 20000; k++) {
+    const d = addInterval(date, k * rep.n, rep.unit);
+    if (d > now) return d;
+  }
+  return addInterval(now, rep.n, rep.unit);
+}
+
+// "Today" covers overdue too: late tasks roll forward with no warning.
+export function whenLabel(t, now) {
+  if (!t.date) return "";
+  const lead = t.rep ? "↻ " : "";
+  if (t.date <= now) return lead + "Today";
+  if (t.date === addDays(now, 1)) return lead + "Tomorrow";
+  const [, m, d] = parts(t.date);
+  return `${lead}${DAYS[dow(t.date)]} ${d} ${MONTHS[m]}`;
+}
+
+// Only the valid parts of a task's optional date fields. A rep without a valid date is dropped.
+const extras = (t) => {
+  const out = {};
+  if (typeof t.date === "string" && DATE_RE.test(t.date) && addDays(t.date, 0) === t.date) {
+    out.date = t.date;
+    const r = t.rep;
+    if (r && Number.isInteger(r.n) && r.n >= 1 && r.n <= 365 && UNITS.includes(r.unit) && (r.mode === "schedule" || r.mode === "after")) out.rep = { n: r.n, unit: r.unit, mode: r.mode };
+  }
+  if (typeof t.l === "string" && t.l) { // area id
+    out.l = t.l;
+    if (typeof t.h === "string" && t.h) out.h = t.h; // heading id inside that area
+  }
+  if (Number.isFinite(t.dt) && t.done === true) out.dt = t.dt; // when it was completed, for the Done view
+  return out;
+};
+
+// Named lists: [{ id, name, u }]. Deleted ones are tombstoned in `tomb`, like tasks.
+export function cleanLists(arr) {
+  const seen = new Set();
+  return (Array.isArray(arr) ? arr : [])
+    .filter((l) => l && typeof l.id === "string" && typeof l.name === "string" && l.name.trim() && !seen.has(l.id) && seen.add(l.id))
+    .map((l) => ({ id: l.id, name: l.name.trim().slice(0, 40), u: Number.isFinite(l.u) ? l.u : 0, heads: cleanHeads(l.heads) }));
+}
+// Headings of an area live inside it: [{ id, name }] in display order. shortcut: an area and its headings merge as one unit, newest edit wins.
+const cleanHeads = (arr) => {
+  const seen = new Set();
+  return (Array.isArray(arr) ? arr : [])
+    .filter((h) => h && typeof h.id === "string" && typeof h.name === "string" && h.name.trim() && !seen.has(h.id) && seen.add(h.id))
+    .map((h) => ({ id: h.id, name: h.name.trim().slice(0, 60) }));
+};
+export function parseLists(text) {
+  try { return cleanLists(JSON.parse(text)?.lists); } catch { return []; }
+}
+
 // Accepts an export file ({tasks: [...]}) or a bare array. Throws on anything else.
 export function parseBackup(text) {
   let data = JSON.parse(text);
@@ -47,7 +128,7 @@ export function parseBackup(text) {
       let id = String(t.id ?? "");
       if (!id || seen.has(id)) id = newId();
       seen.add(id);
-      return { id, text: t.text.trim(), done: t.done === true, u: Number.isFinite(t.u) ? t.u : 0 };
+      return { id, text: t.text.trim(), done: t.done === true, u: Number.isFinite(t.u) ? t.u : 0, ...extras(t) };
     });
 }
 
@@ -64,9 +145,10 @@ export function normalize(s) {
   return {
     tasks: tasks
       .filter((t) => t && typeof t.id === "string" && typeof t.text === "string" && t.text.trim() && !seen.has(t.id) && seen.add(t.id))
-      .map((t) => ({ id: t.id, text: t.text.trim(), done: t.done === true, u: Number.isFinite(t.u) ? t.u : 0 })),
+      .map((t) => ({ id: t.id, text: t.text.trim(), done: t.done === true, u: Number.isFinite(t.u) ? t.u : 0, ...extras(t) })),
     tomb,
     ou: Number.isFinite(s?.ou) ? s.ou : 0,
+    lists: cleanLists(s?.lists),
   };
 }
 
@@ -84,8 +166,11 @@ export function merge(a, b) {
   const known = new Set(win.tasks.map((t) => t.id));
   const order = [...lose.tasks.map((t) => t.id).filter((id) => !known.has(id)), ...win.tasks.map((t) => t.id)];
   const tasks = order.map((id) => byId.get(id)).filter((t) => t.u > (tomb[t.id] ?? -1));
-  return { tasks, tomb, ou: Math.max(a.ou, b.ou) };
+  const [la, lb] = [a.lists ?? [], b.lists ?? []], lmap = new Map();
+  for (const l of [...lb, ...la]) { const c = lmap.get(l.id); if (!c || l.u >= c.u) lmap.set(l.id, l); } // newest rename wins
+  const lists = [...new Set([...la, ...lb].map((l) => l.id))].map((id) => lmap.get(id)).filter((l) => l.u > (tomb[l.id] ?? -1));
+  return { tasks, tomb, ou: Math.max(a.ou, b.ou), lists };
 }
 
 // Cheap equality for two sides, used to skip no-op saves and uploads.
-export const sig = (s) => JSON.stringify([s.tasks.map((t) => [t.id, t.text, t.done, t.u]), Object.entries(s.tomb).sort(), s.ou]);
+export const sig = (s) => JSON.stringify([s.tasks.map((t) => [t.id, t.text, t.done, t.u, t.date, t.rep, t.l, t.h, t.dt]), Object.entries(s.tomb).sort(), s.ou, (s.lists ?? []).map((l) => [l.id, l.name, l.u, l.heads])]);

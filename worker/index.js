@@ -39,7 +39,8 @@ export default {
       if (metadata?.w && metadata.w !== w) return reply("forbidden", 403);
       const cur = metadata?.v ?? 0;
       const want = req.headers.get("If-Match"); // shortcut: KV has no atomic CAS, so a race can slip through; the client merges on the next sync
-      if (want !== null && want !== `"${cur}"`) return reply("conflict", 412, { ETag: `"${cur}"` });
+      // Cloudflare turns the ETag weak (W/"1") when it compresses the body, so accept both forms.
+      if (want !== null && want.replace(/^W\//, "") !== `"${cur}"`) return reply("conflict", 412, { ETag: `"${cur}"` });
       await env.BLOBS.put(key, body, { metadata: { v: cur + 1, w } });
       return reply(null, 204, { ETag: `"${cur + 1}"` });
     }
