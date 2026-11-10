@@ -22,6 +22,6 @@
   </defs>
   <rect x="202" y="190" width="620" height="600" rx="190" fill="url(#face)"/>
   <rect x="202" y="190" width="620" height="600" rx="190" fill="url(#sheen)"/>
-  <path d="M372 480L476 584L672 360" fill="none" stroke="#1b49b8" stroke-opacity=".35" stroke-width="70" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 16)" filter="url(#soft)"/>
-  <path d="M372 480L476 584L672 360" fill="none" stroke="#ffffff" stroke-width="66" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M327 486L462 621L717 330" fill="none" stroke="#1b49b8" stroke-opacity=".35" stroke-width="86" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 16)" filter="url(#soft)"/>
+  <path d="M327 486L462 621L717 330" fill="none" stroke="#ffffff" stroke-width="80" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
