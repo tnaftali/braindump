@@ -75,9 +75,9 @@ test("lists: newest rename wins, union, tombstone removes", () => {
 
 test("lists: normalize cleans, tasks keep l, parseLists reads an export", () => {
   const n = normalize({ tasks: [{ id: "a", text: "x", l: "h" }], lists: [{ id: "h", name: "  Home " }, { id: "h", name: "dup" }, { name: "no id" }, { id: "z", name: " " }] });
-  assert.deepEqual(n.lists, [{ id: "h", name: "Home", u: 0, heads: [] }]);
+  assert.deepEqual(n.lists, [{ id: "h", name: "Home", u: 0, heads: [], subs: [] }]);
   assert.equal(n.tasks[0].l, "h");
-  assert.deepEqual(parseLists(JSON.stringify({ lists: [{ id: "q", name: "Q", u: 3 }] })), [{ id: "q", name: "Q", u: 3, heads: [] }]);
+  assert.deepEqual(parseLists(JSON.stringify({ lists: [{ id: "q", name: "Q", u: 3 }] })), [{ id: "q", name: "Q", u: 3, heads: [], subs: [] }]);
   assert.deepEqual(parseLists("nope"), []);
 });
 
@@ -86,7 +86,17 @@ test("headings and completion time survive normalize; heading needs an area", ()
     tasks: [{ id: "a", text: "x", l: "h", h: "k", done: true, dt: 5 }, { id: "b", text: "y", h: "k", dt: 5 }],
     lists: [{ id: "h", name: "Home", heads: [{ id: "k", name: " Taxes " }, { id: "k", name: "dup" }, { name: "no id" }] }],
   });
-  assert.deepEqual(n.lists[0].heads, [{ id: "k", name: "Taxes" }]);
+  assert.deepEqual(n.lists[0].subs, [{ id: "k", name: "Taxes", heads: [] }]); // an old area-level heading becomes a subarea
+  assert.deepEqual(n.lists[0].heads, []);
   assert.deepEqual([n.tasks[0].h, n.tasks[0].dt], ["k", 5]);
   assert.deepEqual([n.tasks[1].h, n.tasks[1].dt], [undefined, undefined]); // no area, not done
+});
+
+test("subareas keep their own headings; a task keeps its subarea only with an area", () => {
+  const n = normalize({
+    tasks: [{ id: "a", text: "x", l: "h", s: "p", h: "k" }, { id: "b", text: "y", s: "p" }],
+    lists: [{ id: "h", name: "Home", subs: [{ id: "p", name: " Rodeo ", heads: [{ id: "k", name: "Landing" }] }, { id: "p", name: "dup" }] }],
+  });
+  assert.deepEqual(n.lists[0].subs, [{ id: "p", name: "Rodeo", heads: [{ id: "k", name: "Landing" }] }]);
+  assert.deepEqual([n.tasks[0].s, n.tasks[0].h, n.tasks[1].s], ["p", "k", undefined]);
 });

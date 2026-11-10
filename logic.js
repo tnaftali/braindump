@@ -76,11 +76,20 @@ export function nextDate(date, rep, now) {
 export function whenLabel(t, now) {
   if (!t.date) return "";
   const lead = t.rep ? "↻ " : "";
-  if (t.date <= now) return lead + "Today";
-  if (t.date === addDays(now, 1)) return lead + "Tomorrow";
+  const at = t.tm ? " " + t.tm : "";
+  if (t.date <= now) return lead + "Today" + at;
+  if (t.date === addDays(now, 1)) return lead + "Tomorrow" + at;
   const [, m, d] = parts(t.date);
-  return `${lead}${DAYS[dow(t.date)]} ${d} ${MONTHS[m]}`;
+  return `${lead}${DAYS[dow(t.date)]} ${d} ${MONTHS[m]}${at}`;
 }
+
+const cleanChecks = (arr) => {
+  const seen = new Set();
+  return (Array.isArray(arr) ? arr : [])
+    .filter((c) => c && typeof c.id === "string" && typeof c.text === "string" && c.text.trim() && !seen.has(c.id) && seen.add(c.id))
+    .slice(0, 100)
+    .map((c) => ({ id: c.id, text: c.text.trim().slice(0, 200), done: c.done === true }));
+};
 
 // Only the valid parts of a task's optional date fields. A rep without a valid date is dropped.
 const extras = (t) => {
@@ -89,10 +98,16 @@ const extras = (t) => {
     out.date = t.date;
     const r = t.rep;
     if (r && Number.isInteger(r.n) && r.n >= 1 && r.n <= 365 && UNITS.includes(r.unit) && (r.mode === "schedule" || r.mode === "after")) out.rep = { n: r.n, unit: r.unit, mode: r.mode };
+    if (typeof t.tm === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(t.tm)) out.tm = t.tm; // optional time of day, local "HH:MM"
+    if (t.ev === true) out.ev = true; // "this evening": Today lists it in its own group
   }
+  if (typeof t.n === "string" && t.n.trim()) out.n = t.n.slice(0, 5000); // notes
+  const c = cleanChecks(t.c);
+  if (c.length) out.c = c; // checklist: [{ id, text, done }]
   if (typeof t.l === "string" && t.l) { // area id
     out.l = t.l;
-    if (typeof t.h === "string" && t.h) out.h = t.h; // heading id inside that area
+    if (typeof t.s === "string" && t.s) out.s = t.s; // subarea id inside that area
+    if (typeof t.h === "string" && t.h) out.h = t.h; // heading id, in the subarea if it has one, else in the area
   }
   if (Number.isFinite(t.dt) && t.done === true) out.dt = t.dt; // when it was completed, for the Done view
   return out;
@@ -103,7 +118,12 @@ export function cleanLists(arr) {
   const seen = new Set();
   return (Array.isArray(arr) ? arr : [])
     .filter((l) => l && typeof l.id === "string" && typeof l.name === "string" && l.name.trim() && !seen.has(l.id) && seen.add(l.id))
-    .map((l) => ({ id: l.id, name: l.name.trim().slice(0, 40), u: Number.isFinite(l.u) ? l.u : 0, heads: cleanHeads(l.heads) }));
+    .map((l) => {
+      const subs = cleanSubs(l.subs), ids = new Set(subs.map((x) => x.id));
+      // shortcut: a heading straight under an area (old data) becomes a subarea with the same id; tasks find it through t.h
+      for (const h of cleanHeads(l.heads)) if (!ids.has(h.id)) subs.push({ id: h.id, name: h.name, heads: [] });
+      return { id: l.id, name: l.name.trim().slice(0, 40), u: Number.isFinite(l.u) ? l.u : 0, heads: [], subs };
+    });
 }
 // Headings of an area live inside it: [{ id, name }] in display order. shortcut: an area and its headings merge as one unit, newest edit wins.
 const cleanHeads = (arr) => {
@@ -111,6 +131,13 @@ const cleanHeads = (arr) => {
   return (Array.isArray(arr) ? arr : [])
     .filter((h) => h && typeof h.id === "string" && typeof h.name === "string" && h.name.trim() && !seen.has(h.id) && seen.add(h.id))
     .map((h) => ({ id: h.id, name: h.name.trim().slice(0, 60) }));
+};
+// Subareas of an area: [{ id, name, heads }]. A heading belongs to the area or to one subarea.
+const cleanSubs = (arr) => {
+  const seen = new Set();
+  return (Array.isArray(arr) ? arr : [])
+    .filter((x) => x && typeof x.id === "string" && typeof x.name === "string" && x.name.trim() && !seen.has(x.id) && seen.add(x.id))
+    .map((x) => ({ id: x.id, name: x.name.trim().slice(0, 60), heads: cleanHeads(x.heads) }));
 };
 export function parseLists(text) {
   try { return cleanLists(JSON.parse(text)?.lists); } catch { return []; }
@@ -168,9 +195,10 @@ export function merge(a, b) {
   const tasks = order.map((id) => byId.get(id)).filter((t) => t.u > (tomb[t.id] ?? -1));
   const [la, lb] = [a.lists ?? [], b.lists ?? []], lmap = new Map();
   for (const l of [...lb, ...la]) { const c = lmap.get(l.id); if (!c || l.u >= c.u) lmap.set(l.id, l); } // newest rename wins
-  const lists = [...new Set([...la, ...lb].map((l) => l.id))].map((id) => lmap.get(id)).filter((l) => l.u > (tomb[l.id] ?? -1));
+  // the side with the newer order (ou) sets the list order
+  const lists = [...new Set([...(win === a ? la : lb), ...(win === a ? lb : la)].map((l) => l.id))].map((id) => lmap.get(id)).filter((l) => l.u > (tomb[l.id] ?? -1));
   return { tasks, tomb, ou: Math.max(a.ou, b.ou), lists };
 }
 
 // Cheap equality for two sides, used to skip no-op saves and uploads.
-export const sig = (s) => JSON.stringify([s.tasks.map((t) => [t.id, t.text, t.done, t.u, t.date, t.rep, t.l, t.h, t.dt]), Object.entries(s.tomb).sort(), s.ou, (s.lists ?? []).map((l) => [l.id, l.name, l.u, l.heads])]);
+export const sig = (s) => JSON.stringify([s.tasks.map((t) => [t.id, t.text, t.done, t.u, t.date, t.rep, t.l, t.s, t.h, t.dt, t.ev, t.tm, t.n, t.c]), Object.entries(s.tomb).sort(), s.ou, (s.lists ?? []).map((l) => [l.id, l.name, l.u, l.heads, l.subs])]);

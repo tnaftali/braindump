@@ -48,14 +48,14 @@
       <input id="in" placeholder="What's on your mind?" autocomplete="off" enterkeyhint="done" aria-label="New task">
       <button>Add</button>
     </form>
-    <p class="hint">Press <kbd>Enter</kbd> to add · <kbd>/</kbd> to focus from anywhere · paste links, they become chips · click text to edit · drag <b>⋮⋮</b> to reorder</p>
+    <p class="hint">Press <kbd>Enter</kbd> to add · <kbd>/</kbd> to focus from anywhere · paste links, they become chips · double-click text to edit · drag <b>⋮⋮</b> to reorder</p>
   </header>
   <ul id="list"></ul>
   <div class="foot">
     <span id="meta"></span>
     <button id="clear" type="button" hidden>Delete all completed</button>
     <button id="lren" type="button" hidden>Rename area</button>
-    <button id="hadd" type="button" hidden>Add heading</button>
+    <button id="sadd" type="button" hidden>Add subarea</button>
     <button id="ldel" type="button" hidden>Delete area</button>
     <span class="sp"></span>
     <button id="syncb" type="button">Sync</button>
@@ -66,21 +66,24 @@
 </main>
 </div>
 <dialog id="whend" aria-labelledby="whent">
-  <h2 id="whent">Date, repeat and area</h2>
+  <h2 id="whent">Task details</h2>
+  <input id="wtitle" type="text" maxlength="500" autocomplete="off" aria-label="Task title">
   <div id="wlistrow" hidden>
     <p class="sub">Area</p>
     <select id="wlist" aria-label="Area"></select>
   </div>
-  <div id="whrow" hidden>
-    <p class="sub">Heading</p>
-    <select id="whead" aria-label="Heading"></select>
-  </div>
-  <div class="row">
+  <p class="sub">When</p>
+  <div class="row quick">
     <button type="button" data-d="today">Today</button>
+    <button type="button" data-d="evening">Evening</button>
     <button type="button" data-d="tomorrow">Tomorrow</button>
     <button type="button" data-d="monday">Next week</button>
   </div>
-  <input type="date" id="wdate" aria-label="Date">
+  <div class="row when">
+    <input type="date" id="wdate" aria-label="Date">
+    <input type="time" id="wtime" aria-label="Time" step="300">
+    <button type="button" id="wtclear" aria-label="Clear time" title="Clear time">×</button>
+  </div>
   <p class="sub">Repeat</p>
   <div class="row">
     <select id="runit" aria-label="Repeat unit">
@@ -92,10 +95,26 @@
     <option value="schedule">On a schedule</option><option value="after">After completion</option>
   </select>
   <p class="st" id="rhelp"></p>
-  <div class="row">
+  <p class="sub">Notes</p>
+  <textarea id="wnote" rows="3" placeholder="Notes" aria-label="Notes" maxlength="5000"></textarea>
+  <p class="sub">Checklist</p>
+  <div id="wchk"></div>
+  <input id="wcadd" type="text" placeholder="+ Add a checklist item" maxlength="200" autocomplete="off" aria-label="Add a checklist item">
+  <div class="row foot2">
     <button class="danger" id="wclear" type="button">Clear date</button>
     <button class="close" id="wclose" type="button">Done</button>
   </div>
+</dialog>
+<dialog id="ask" aria-labelledby="askt">
+  <form id="askf" method="dialog">
+    <h2 id="askt"></h2>
+    <p id="askp"></p>
+    <input id="aski" type="text" maxlength="200" autocomplete="off" aria-label="Name" hidden>
+    <div class="row">
+      <button type="button" id="askx">Cancel</button>
+      <button class="primary" id="asko"></button>
+    </div>
+  </form>
 </dialog>
 <dialog id="dlg" aria-labelledby="dlgt">
   <h2 id="dlgt">Sync devices</h2>
@@ -116,6 +135,13 @@
       <button id="copyc" type="button">Copy code</button>
       <button id="now" type="button">Sync now</button>
     </div>
+    <p class="sub">Reminders</p>
+    <p>Get a notification at the time of a task. On iPhone, open the app from its Home Screen icon first.</p>
+    <div class="row">
+      <button id="remb" type="button">Turn on reminders</button>
+      <button id="remt" type="button" hidden>Send a test</button>
+    </div>
+    <p id="remst" class="st" role="status"></p>
     <p class="sub">On your other device: open the link, or choose Sync → paste the code. On iPhone the installed app and Safari keep separate data, so join inside the app.</p>
     <button class="danger" id="offb" type="button">Turn off on this device</button>
   </div>

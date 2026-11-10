@@ -53,3 +53,12 @@ test("parseBackup: rejects non-task data", () => {
   assert.throws(() => parseBackup("{}"));
   assert.throws(() => parseBackup("nope"));
 });
+
+test("parseBackup: keeps notes, checklist and evening flag; ignores bad ones", () => {
+  const [a, b] = parseBackup(JSON.stringify([
+    { id: "a", text: "x", date: "2026-11-10", ev: true, n: "note", c: [{ id: "1", text: "one", done: true }, { id: "1", text: "dup" }, { id: "2", text: " " }] },
+    { id: "b", text: "y", ev: true, n: "  ", c: "nope" }, // ev needs a date
+  ]));
+  assert.deepEqual([a.ev, a.n, a.c], [true, "note", [{ id: "1", text: "one", done: true }]]);
+  assert.deepEqual([b.ev, b.n, b.c], [undefined, undefined, undefined]);
+});

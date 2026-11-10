@@ -3,6 +3,8 @@
 import { merge, normalize, sig } from "./logic.js";
 
 export const API = "https://braindump-sync.tobias-naftali-337.workers.dev/b/";
+export const PUSH_API = API.replace(/b\/$/, "p/");
+export const VAPID_PUBLIC = "BM1hN6UAO61NsXgvAaIJwOVho1CCDvJ0RO9gBrfllkDNmONowgG0GYwd3chTCa9uzZAyMM2xaGd_6v7MxZKD1us"; // the Worker holds the private half (VAPID_JWK)
 const enc = new TextEncoder();
 
 const b64 = (u8) => {
@@ -43,6 +45,16 @@ export async function decrypt(key, text) {
   const raw = unb64(text);
   const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: raw.subarray(0, 12) }, key, raw.subarray(12));
   return JSON.parse(new TextDecoder().decode(pt));
+}
+
+// Reminders: send this device's push subscription and the reminders due soon ([{ k: task id, at: ms, t: title }]).
+// The server learns the times only: each title is encrypted with the data key. Returns that key, which the service worker needs to read a push.
+export async function putReminders(code, sub, rem, off = false) {
+  const { id, wk, key } = await derive(code);
+  const body = JSON.stringify({ sub, off, rem: await Promise.all(rem.map(async (r) => ({ k: r.k, at: r.at, b: await encrypt(key, { t: r.t.slice(0, 140) }) }))) });
+  const res = await fetch(PUSH_API + id, { method: "PUT", headers: { "X-Write-Key": wk }, body });
+  if (res.status !== 204) throw new Error(`reminders ${res.status}`);
+  return key;
 }
 
 // Pull, merge, push if the merge changed anything. Returns the merged side. Throws on failure.
