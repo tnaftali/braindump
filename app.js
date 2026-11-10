@@ -26,7 +26,7 @@ try { showSched = !!localStorage.getItem(SCHED); } catch {}
 const setView = (v) => { view = v; try { localStorage.setItem(VIEW, v); } catch {} render(); };
 // A task has an optional date and an optional area. Inbox: neither. Today: any date. Area tab: that area's tasks, dated or not.
 const areaOf = (t) => (meta.lists.some((l) => l.id === t.l) ? t.l : ""); // a task of an unknown area counts as having none
-const isArea = () => !["inbox", "today", "upcoming", "done"].includes(view); // a view is a built-in name, an area id, or "area|subarea"
+const isArea = () => !["inbox", "today", "upcoming", "done", "board"].includes(view); // a view is a built-in name, an area id, or "area|subarea"
 const vArea = () => view.split("|")[0], vSub = () => view.split("|")[1] ?? "";
 const NAVFOLD = "braindump.navfold"; // areas whose subareas are hidden in the sidebar; per device
 const navShut = new Set(); try { for (const id of JSON.parse(localStorage.getItem(NAVFOLD) ?? "[]")) navShut.add(id); } catch {}
@@ -106,7 +106,7 @@ function edit(el) {
 }
 
 // Done tasks leave every view except Done, which groups them by the day they were completed.
-const inView = (t) => (view === "done" ? t.done : !t.done && (view === "inbox" ? !areaOf(t) && !t.date : view === "today" ? !!t.date && t.date <= day : view === "upcoming" ? t.date > day : areaOf(t) === vArea() && (!vSub() || subOf(meta.lists.find((l) => l.id === t.l), t)?.id === vSub())));
+const inView = (t) => (view === "done" ? t.done : !t.done && (view === "board" || view === "inbox" ? !areaOf(t) && !t.date : view === "today" ? !!t.date && t.date <= day : view === "upcoming" ? t.date > day : areaOf(t) === vArea() && (!vSub() || subOf(meta.lists.find((l) => l.id === t.l), t)?.id === vSub())));
 const byDate = (a, b) => (a.date + (a.tm ?? "")).localeCompare(b.date + (b.tm ?? "")); // by day, then by time
 const dayOf = (t) => today(new Date(t.dt ?? t.u));
 
@@ -161,7 +161,7 @@ function row(t, td) {
     ci.append(box, Object.assign(document.createElement("span"), { textContent: c.text }));
     body.append(ci);
   }
-  if (!isArea() && areaOf(t)) { // the area (and subarea) sits under the text; a tap opens that area, the details sheet re-files the task
+  if (!isArea() && view !== "board" && areaOf(t)) { // the area (and subarea) sits under the text; a tap opens that area, the details sheet re-files the task
     const { l, sa } = placeOf(t);
     body.append(Object.assign(document.createElement("button"), { type: "button", className: "area", title: "Open this area", textContent: sa ? `${l.name} › ${sa.name}` : l.name }));
   }
@@ -183,6 +183,45 @@ const secRow = (text, ...kids) => {
 const ibtn = (k, cls, fn, title, open) => { const b = btn("", cls, fn, title); b.append(svg(k)); if (open) b.classList.add("open"); return b; }; // a button drawn with an ICON, not a glyph
 const btn = (text, cls, fn, title) => Object.assign(document.createElement("button"), { type: "button", textContent: text, className: cls, title, onclick: fn });
 
+// Board: one column per area (tasks with no area sit in Inbox), a project's tasks under its name. Rows are the same rows as everywhere else.
+function renderBoard(mine, td) {
+  const col = (id, name, inCol, l) => {
+    const c = Object.assign(document.createElement("section"), { className: "col" }), body = document.createElement("ul");
+    c.dataset.col = id;
+    const add = Object.assign(document.createElement("input"), { className: "cadd", placeholder: "Add a task", enterkeyhint: "done", autocomplete: "off", maxLength: 500 });
+    add.setAttribute("aria-label", `Add a task to ${name}`);
+    add.onkeydown = (e) => {
+      const typed = add.value.trim();
+      if (e.key !== "Enter" || !typed) return;
+      const { text, ...when } = parseWhen(typed);
+      tasks.unshift({ id: newId(), text, done: false, u: now(), ...(l ? { l: l.id } : {}), ...when }); // the column decides where a new task lands
+      commit();
+      list.querySelector(`[data-col="${id}"] .cadd`)?.focus();
+    };
+    const h = btn(name, "colh", l ? () => setView(l.id) : () => setView("inbox"), l ? "Open this area" : "Open the Inbox");
+    const toggle = (key) => () => { if (!folded.delete(key)) folded.add(key); try { localStorage.setItem(FOLD, JSON.stringify([...folded])); } catch {} render(); };
+    const later = inCol.filter((t) => t.date > td).sort(byDate), now_ = inCol.filter((t) => !(t.date > td)); // scheduled tasks wait in Upcoming at the bottom
+    body.append(...now_.filter((t) => !l || !subOf(l, t)).map((t) => row(t, td)));
+    for (const sa of l?.subs ?? []) { // headings are not shown: a project's tasks sit together
+      const mineSa = now_.filter((t) => subOf(l, t)?.id === sa.id);
+      if (!mineSa.length) continue;
+      const key = `bd:${sa.id}`, shut = folded.has(key);
+      const sh = ibtn("chev", "hc", toggle(key), shut ? "Expand" : "Collapse", !shut), nm = btn(sa.name, "subh", () => setView(`${l.id}|${sa.id}`), "Open this project");
+      body.append(secRow("", sh, nm));
+      if (!shut) body.append(...mineSa.map((t) => row(t, td)));
+    }
+    if (later.length) {
+      const key = `bd:up:${id}`, open = folded.has(key), u = ibtn("chev", "upg", toggle(key), "", open);
+      u.append(`Upcoming (${later.length})`);
+      body.append(secRow("", u));
+      if (open) body.append(...later.map((t) => row(t, td)));
+    }
+    c.append(h, add, body);
+    return c;
+  };
+  const open = tasks.filter((t) => !t.done); // shown in full: the date chip on a row says when
+  list.append(col("inbox", "Inbox", open.filter((t) => !areaOf(t))), ...meta.lists.map((l) => col(l.id, l.name, open.filter((t) => areaOf(t) === l.id), l)));
+}
 let drawn = 0; // when the list was last drawn
 function render() {
   drawn = now();
@@ -194,9 +233,11 @@ function render() {
   $("clear").hidden = !(view === "done" && mine.length);
   $("meta").textContent = "";
   list.classList.toggle("up", view === "upcoming");
+  list.classList.toggle("board", view === "board"); document.body.classList.toggle("board", view === "board");
   const EMPTY = { inbox: "Inbox is empty. Dump a thought above.", today: "Nothing for today. Give a task a date to see it here.", upcoming: "Nothing scheduled. Give a task a future date to see it here.", done: "Nothing completed yet." };
-  if (!mine.length && !(isArea() && cur()?.subs.length)) list.innerHTML = `<div class="empty">${EMPTY[view] ?? "This area is empty."}</div>`;
-  if (view === "done") {
+  if (!mine.length && view !== "board" && !(isArea() && cur()?.subs.length)) list.innerHTML = `<div class="empty">${EMPTY[view] ?? "This area is empty."}</div>`;
+  if (view === "board") renderBoard(mine, td);
+  else if (view === "done") {
     let last = "";
     for (const t of mine.sort((a, b) => (b.dt ?? b.u) - (a.dt ?? a.u))) {
       const d = dayOf(t);
@@ -205,8 +246,19 @@ function render() {
     }
   } else if (view === "upcoming") { // future dates only, one group per day
     let last = "";
+    const near = addDays(td, 10), mon = (d) => d.slice(0, 7); // the next 10 days by day; later ones fold into a month each
     for (const t of mine.sort(byDate)) {
-      if (t.date !== last) { last = t.date; list.append(secRow(whenLabel({ date: t.date }, td))); }
+      if (t.date > near) {
+        if (mon(t.date) !== last) {
+          last = mon(t.date);
+          const key = `upm:${last}`, open = folded.has(key), n = mine.filter((x) => x.date > near && mon(x.date) === last).length;
+          const y = +last.slice(0, 4), name = new Date(y, +last.slice(5) - 1, 1).toLocaleString(undefined, { month: "long", ...(y !== +td.slice(0, 4) ? { year: "numeric" } : {}) });
+          const u = ibtn("chev", "upg", () => { if (!folded.delete(key)) folded.add(key); try { localStorage.setItem(FOLD, JSON.stringify([...folded])); } catch {} render(); }, "", open);
+          u.append(`${name} (${n})`);
+          list.append(secRow("", u));
+        }
+        if (!folded.has(`upm:${last}`)) continue;
+      } else if (t.date !== last) { last = t.date; list.append(secRow(whenLabel({ date: t.date }, td))); }
       list.append(row(t, td));
     }
   } else {
@@ -223,14 +275,19 @@ function render() {
     // A group is a subarea or a heading: a header row (fold, name, count when folded, extras, delete) and its tasks, scheduled ones last.
     const group = (item, cls, inside, ds, isSub, ...extra) => {
       const shut = folded.has(item.id) && !(isSub && vSub()); // a subarea on its own page is never folded
-      if (vSub()) inside = inside.filter((t) => !(t.date > td)); // on a subarea page, future tasks go under Upcoming
-      inside = inside.sort((a, b) => (a.date > td) - (b.date > td));
+      const later = inside.filter((t) => t.date > td).sort(byDate), key = `up:${item.id}`; // future tasks get their own Upcoming row, closed until opened
+      inside = inside.filter((t) => !(t.date > td));
       const fold = ibtn("chev", "hc", () => { if (shut) folded.delete(item.id); else folded.add(item.id); try { localStorage.setItem(FOLD, JSON.stringify([...folded])); } catch {} render(); }, shut ? "Expand" : "Collapse", !shut);
-      const count = Object.assign(document.createElement("span"), { className: "hcount", textContent: inside.length });
-      const hl = Object.assign(secRow("", fold, btn(item.name, "hn", () => renameItem(item), "Rename"), ...(shut ? [count] : []), ...extra, ibtn("x", "hx", () => deleteItem(item, isSub), isSub ? "Delete project" : "Delete heading")), { className: `sec ${cls}` });
+      const hl = Object.assign(secRow("", fold, btn(item.name, "hn", () => renameItem(item), "Rename"), ...extra, ibtn("x", "hx", () => deleteItem(item, isSub), isSub ? "Delete project" : "Delete heading")), { className: `sec ${cls}` });
       Object.assign(hl.dataset, ds); // dragging a task onto the header files the task under it
       list.append(hl);
       if (!shut) inside.forEach((t) => list.append(row(t, td)));
+      if (!shut && !vSub() && later.length) { // on a project's own page the page-level Upcoming covers these
+        const open = folded.has(key), u = ibtn("chev", "upg", () => { if (open) folded.delete(key); else folded.add(key); try { localStorage.setItem(FOLD, JSON.stringify([...folded])); } catch {} render(); }, "", open);
+        u.append(`Upcoming (${later.length})`);
+        list.append(Object.assign(secRow("", u), { className: `sec ups${isSub ? "" : " in"}` }));
+        if (open) later.forEach((t) => list.append(row(t, td)));
+      }
       return shut;
     };
     for (const sa of l?.subs ?? []) {
@@ -289,6 +346,7 @@ const ICON = { // 24px stroke icons, drawn by style.css
   tomorrow: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6L7 7M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>',
   week: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  board: '<rect x="3.500" y="4" width="5" height="16" rx="1.500"/><rect x="10" y="4" width="5" height="10" rx="1.500"/><rect x="16.500" y="4" width="4" height="13" rx="1.500"/>',
   chev: '<path d="M9 6l6 6-6 6"/>', // points right; .open turns it down
 };
 const icon = (k) => Object.assign(document.createElementNS("http://www.w3.org/2000/svg", "svg"), { innerHTML: ICON[k] }); // set below with attributes
@@ -306,7 +364,7 @@ function renderTabs(counts) {
   };
   const gap = () => Object.assign(document.createElement("div"), { className: "gap" });
   $("tabs").replaceChildren(
-    item("inbox", "Inbox", "inbox"), item("today", "Today", "today"), item("upcoming", "Upcoming", "upcoming"), item("done", "Done", "done"), gap(),
+    item("inbox", "Inbox", "inbox"), item("today", "Today", "today"), item("upcoming", "Upcoming", "upcoming"), item("done", "Done", "done"), item("board", "Board", "board"), gap(),
     ...meta.lists.map((l) => { // an area with its subareas under it; the caret hides them
       const g = Object.assign(document.createElement("div"), { className: "ngrp" }), shut = navShut.has(l.id);
       g.dataset.lid = l.id;
@@ -322,7 +380,7 @@ function renderTabs(counts) {
     }), ...(meta.lists.length ? [gap()] : []),
     Object.assign(item("", "New area", "add", newArea), { className: "nav new" }),
   );
-  $("vt").textContent = { inbox: "Inbox", today: "Today", upcoming: "Upcoming", done: "Done" }[view] ?? (vSub() ? cur()?.subs.find((s) => s.id === vSub())?.name : cur()?.name) ?? "";
+  $("vt").textContent = { inbox: "Inbox", today: "Today", upcoming: "Upcoming", done: "Done", board: "Board" }[view] ?? (vSub() ? cur()?.subs.find((s) => s.id === vSub())?.name : cur()?.name) ?? "";
 }
 // Drag an area up or down in the sidebar. Touch: hold 300 ms first, so a plain swipe still scrolls.
 let swallow = false;
@@ -576,7 +634,7 @@ const startDrag = (d) => {
 };
 list.addEventListener("pointerdown", (e) => {
   const li = e.target.closest("li[data-id]");
-  if (!li || li.classList.contains("future") || e.button > 0 || e.target.closest("button, input, a") || e.target.isContentEditable) return;
+  if (view === "board" || !li || li.classList.contains("future") || e.button > 0 || e.target.closest("button, input, a") || e.target.isContentEditable) return;
   drag = { id: li.dataset.id, li, pid: e.pointerId, y: e.clientY, x0: e.clientX, y0: e.clientY, on: false, over: null, before: false, touch: e.pointerType !== "mouse" };
   if (drag.touch) { const d = drag; d.timer = setTimeout(() => { navigator.vibrate?.(8); startDrag(d); }, 300); }
 });
@@ -638,7 +696,7 @@ list.addEventListener("pointercancel", endDrag);
 // Drag a subarea header to reorder: its headings and tasks travel with it. Same gestures as tasks: mouse after 5px, touch after a hold.
 const blockOf = (h) => { // a subarea's rows: its header, then everything up to the next subarea or a plain section like "Upcoming"
   const out = [h];
-  for (let n = h.nextElementSibling; n && !n.matches("li.sec.sub") && !(n.matches("li.sec") && !n.matches(".head")); n = n.nextElementSibling) out.push(n);
+  for (let n = h.nextElementSibling; n && !n.matches("li.sec.sub") && !(n.matches("li.sec") && !n.matches(".head, .ups")); n = n.nextElementSibling) out.push(n);
   return out;
 };
 list.addEventListener("pointerdown", (e) => {
@@ -788,11 +846,15 @@ function remQueue(ms = 2000) {
   clearTimeout(remTimer);
   remTimer = setTimeout(() => pushReminders().catch((e) => { console.error("reminders failed", e); remSay(`Reminders failed: ${e.message}`); }), ms);
 }
+// The browser can lose its push subscription (cleared site data, expired); subscribe again, the permission is already granted.
+async function pushSub() {
+  const pm = (await navigator.serviceWorker.ready).pushManager;
+  return (await pm.getSubscription()) ?? pm.subscribe({ userVisibleOnly: true, applicationServerKey: Uint8Array.from(atob(VAPID_PUBLIC.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0)) });
+}
 async function pushReminders(list = dueList()) {
   const s = JSON.stringify(list.map((r) => [r.k, r.at, r.t]));
   if (s === remSent) return;
-  const sub = await (await navigator.serviceWorker.ready).pushManager.getSubscription();
-  if (!sub) throw new Error("not subscribed");
+  const sub = await pushSub();
   await keep(await putReminders(code, sub.toJSON(), list));
   remSent = s;
 }
@@ -801,8 +863,7 @@ async function enableReminders() {
   if (!navigator.serviceWorker || !("PushManager" in window)) return remSay("This browser can't do push. On iPhone, open the app from the Home Screen icon.");
   try {
     if ((await Notification.requestPermission()) !== "granted") return remSay("Notifications are blocked. Allow them in the system settings.");
-    const reg = await navigator.serviceWorker.ready;
-    await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: Uint8Array.from(atob(VAPID_PUBLIC.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0)) });
+    await pushSub();
     remOn = true; remSent = "";
     try { localStorage.setItem(REM, "1"); } catch {}
     await pushReminders();
@@ -822,7 +883,8 @@ async function disableReminders(old = code) {
 $("remb").onclick = () => (remOn ? disableReminders() : enableReminders());
 $("remt").onclick = async () => { // one reminder in 5 seconds; the cron job sends it within a minute
   try {
-    const sub = await (await navigator.serviceWorker.ready).pushManager.getSubscription();
+    if (Notification.permission !== "granted") throw new Error("notifications are not allowed; turn reminders off and on");
+    const sub = await pushSub();
     await keep(await putReminders(code, sub.toJSON(), [{ k: "test", at: now() + 5000, t: "Reminders work ✓" }]));
     remSent = "";
     remSay("Test sent. It arrives within a minute.");

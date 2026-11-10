@@ -9,12 +9,12 @@
       <stop offset=".18" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
     <linearGradient id="pink" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#fbb6c6"/>
-      <stop offset="1" stop-color="#ec7a97"/>
+      <stop offset="0" stop-color="#9cc4f5"/>
+      <stop offset="1" stop-color="#4a8fe0"/>
     </linearGradient>
     <linearGradient id="cb" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ef8aa4"/>
-      <stop offset="1" stop-color="#d95f80"/>
+      <stop offset="0" stop-color="#6fa8ec"/>
+      <stop offset="1" stop-color="#2f6fc4"/>
     </linearGradient>
     <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
       <feGaussianBlur stdDeviation="50"/>
@@ -25,13 +25,13 @@
   <rect width="1024" height="1024" fill="url(#bg)"/>
   <rect width="1024" height="1024" fill="url(#sheen)" opacity=".6"/>
   <g transform="translate(-18 45)">
-    <g fill="#ec5f86" opacity=".85" filter="url(#glow)"><use href="#cerebrum"/><use href="#cereb"/></g>
+    <g fill="#3b82e6" opacity=".85" filter="url(#glow)"><use href="#cerebrum"/><use href="#cereb"/></g>
     <use href="#cereb" fill="url(#cb)"/>
-    <g fill="none" stroke="#b83f66" stroke-opacity=".55" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <g fill="none" stroke="#1d4f9a" stroke-opacity=".55" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
       <path d="M680 700C720 690 770 695 800 705M672 725C720 718 770 722 805 735M690 748C720 745 750 747 770 752"/>
     </g>
     <use href="#cerebrum" fill="url(#pink)"/>
-    <g fill="none" stroke="#c9486f" stroke-width="15" stroke-linecap="round" stroke-linejoin="round">
+    <g fill="none" stroke="#2a62b3" stroke-width="15" stroke-linecap="round" stroke-linejoin="round">
       <path d="M470 228C440 282 500 302 470 356C450 396 500 412 480 458"/>
       <path d="M650 218C620 272 680 297 655 347C640 387 690 402 670 452"/>
       <path d="M330 288C360 322 320 352 345 392"/>
