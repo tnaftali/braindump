@@ -42,7 +42,7 @@ async function vapid(endpoint, jwk, subject) {
 }
 
 // POST one message. Returns the HTTP status: 201 sent, 404 or 410 the subscription is gone.
-export async function sendPush(sub, text, jwk, subject = "https://tnaftali.github.io/braindump/") {
+export async function sendPush(sub, text, jwk, subject = "https://tnaftali.github.io/tasks/") {
   return (await fetch(sub.endpoint, {
     method: "POST",
     headers: { "Content-Encoding": "aes128gcm", "Content-Type": "application/octet-stream", TTL: "3600", Urgency: "high", Authorization: await vapid(sub.endpoint, jwk, subject) },

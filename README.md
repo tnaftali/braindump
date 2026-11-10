@@ -4,7 +4,7 @@ A quick-capture task list that lives on your phone. Offline, private, no account
 
 Type a thought, press Enter, done. Paste a URL (a PR, a doc) and it becomes a chip. Drag `⋮⋮` to reorder. Tap the circle to finish a task.
 
-**Open the app:** https://tnaftali.github.io/braindump/
+**Open the app:** https://tnaftali.github.io/tasks/
 
 ## Install
 
