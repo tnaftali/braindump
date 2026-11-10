@@ -5,9 +5,9 @@
       <stop offset="1" stop-color="#f1f4fa"/>
     </linearGradient>
     <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#5aa6ff"/>
-      <stop offset=".55" stop-color="#2f78f5"/>
-      <stop offset="1" stop-color="#2a64e8"/>
+      <stop offset="0" stop-color="#72b4ff"/>
+      <stop offset=".55" stop-color="#4a8cf8"/>
+      <stop offset="1" stop-color="#3f78ee"/>
     </linearGradient>
     <linearGradient id="under" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#9cc8ff"/>

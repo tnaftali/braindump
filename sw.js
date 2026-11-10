@@ -1,6 +1,6 @@
 // Offline cache, stale-while-revalidate: answer from cache, refresh it in the background.
 // A deploy shows up on the second launch. Bump VERSION to drop the old cache outright.
-const VERSION = "v69";
+const VERSION = "v71";
 const SHELL = [
   "./",
   "index.html",
@@ -11,6 +11,7 @@ const SHELL = [
   "sync.js",
   "manifest.webmanifest",
   "icon.svg",
+  "favicon.svg",
   "icon-180.png",
   "icon-192.png",
   "icon-512.png",
