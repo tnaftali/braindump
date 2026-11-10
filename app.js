@@ -755,7 +755,7 @@ $("file").onchange = async (e) => {
     for (const l of parseLists(text)) meta.lists = [...meta.lists.filter((x) => x.id !== l.id), { ...l, u: now() }]; // a re-import brings the file's structure
     tasks.filter((t) => !next.some((n) => n.id === t.id)).forEach(drop);
     tasks = next.map((t) => ({ ...t, u: now() })); meta.ou = now(); commit();
-  } catch { ask({ title: "Can't import", text: "That file isn't a Brain Dump backup.", cancel: false }); }
+  } catch { ask({ title: "Can't import", text: "That file isn't a Tasks backup.", cancel: false }); }
 };
 
 // Theme: head script sets the first value from the system; this toggles and persists it.

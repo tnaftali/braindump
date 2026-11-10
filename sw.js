@@ -1,6 +1,6 @@
 // Offline cache, stale-while-revalidate: answer from cache, refresh it in the background.
 // A deploy shows up on the second launch. Bump VERSION to drop the old cache outright.
-const VERSION = "v67";
+const VERSION = "v69";
 const SHELL = [
   "./",
   "index.html",
@@ -46,7 +46,7 @@ self.addEventListener("push", (e) => {
   e.waitUntil((async () => { // iOS needs a notification for every push, so fall back to a generic one
     let body = "A task is due", k = "";
     try { const m = e.data.json(); k = m.k; body = await title(m.b); } catch {}
-    await self.registration.showNotification("Brain Dump", { body, tag: k, icon: "icon-192.png" });
+    await self.registration.showNotification("Tasks", { body, tag: k, icon: "icon-192.png" });
   })());
 });
 self.addEventListener("notificationclick", (e) => {

@@ -1,4 +1,4 @@
-# Brain Dump
+# Tasks
 
 A quick-capture task list that lives on your phone. Offline, private, no account.
 

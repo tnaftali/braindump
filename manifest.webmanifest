@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "Brain Dump",
-  "short_name": "Brain Dump",
+  "name": "Tasks",
+  "short_name": "Tasks",
   "description": "Quick-capture task list. Offline, private, no account.",
   "start_url": "./",
   "scope": "./",
