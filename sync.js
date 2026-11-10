@@ -51,7 +51,7 @@ export async function decrypt(key, text) {
 // The server learns the times only: each title is encrypted with the data key. Returns that key, which the service worker needs to read a push.
 export async function putReminders(code, sub, rem, off = false) {
   const { id, wk, key } = await derive(code);
-  const body = JSON.stringify({ sub, off, rem: await Promise.all(rem.map(async (r) => ({ k: r.k, at: r.at, b: await encrypt(key, { t: r.t.slice(0, 140) }) }))) });
+  const body = JSON.stringify({ sub, off, rem: await Promise.all(rem.map(async (r) => ({ k: r.k, at: r.at, b: await encrypt(key, { t: r.t.slice(0, 140), c: r.c?.slice(0, 140), v: r.v?.slice(0, 80) }) }))) });
   const res = await fetch(PUSH_API + id, { method: "PUT", headers: { "X-Write-Key": wk }, body });
   if (res.status !== 204) throw new Error(`reminders ${res.status}`);
   return key;

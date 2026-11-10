@@ -23,7 +23,11 @@ try { remOn = !!localStorage.getItem(REM); } catch {}
 const SCHED = "braindump.sched"; // is the Scheduled group open; per device, not synced
 let showSched = false;
 try { showSched = !!localStorage.getItem(SCHED); } catch {}
-const setView = (v) => { view = v; try { localStorage.setItem(VIEW, v); } catch {} render(); };
+// Going deeper (an area from a task, a project from its area) remembers where you came from; the Back button returns there.
+// Picking a view in the sidebar starts over.
+let trail = [];
+const goView = (v) => { view = v; try { localStorage.setItem(VIEW, v); } catch {} render(); };
+const setView = (v, deep) => { if (v === view) return; trail = deep ? [...trail, view] : []; goView(v); };
 // A task has an optional date and an optional area. Inbox: neither. Today: any date. Area tab: that area's tasks, dated or not.
 const areaOf = (t) => (meta.lists.some((l) => l.id === t.l) ? t.l : ""); // a task of an unknown area counts as having none
 const isArea = () => !["inbox", "today", "upcoming", "done", "board"].includes(view); // a view is a built-in name, an area id, or "area|subarea"
@@ -198,7 +202,7 @@ function renderBoard(mine, td) {
       commit();
       list.querySelector(`[data-col="${id}"] .cadd`)?.focus();
     };
-    const h = btn(name, "colh", l ? () => setView(l.id) : () => setView("inbox"), l ? "Open this area" : "Open the Inbox");
+    const h = btn(name, "colh", l ? () => setView(l.id, true) : () => setView("inbox", true), l ? "Open this area" : "Open the Inbox");
     const toggle = (key) => () => { if (!folded.delete(key)) folded.add(key); try { localStorage.setItem(FOLD, JSON.stringify([...folded])); } catch {} render(); };
     const later = inCol.filter((t) => t.date > td).sort(byDate), now_ = inCol.filter((t) => !(t.date > td)); // scheduled tasks wait in Upcoming at the bottom
     body.append(...now_.filter((t) => !l || !subOf(l, t)).map((t) => row(t, td)));
@@ -206,7 +210,7 @@ function renderBoard(mine, td) {
       const mineSa = now_.filter((t) => subOf(l, t)?.id === sa.id);
       if (!mineSa.length) continue;
       const key = `bd:${sa.id}`, shut = folded.has(key);
-      const sh = ibtn("chev", "hc", toggle(key), shut ? "Expand" : "Collapse", !shut), nm = btn(sa.name, "subh", () => setView(`${l.id}|${sa.id}`), "Open this project");
+      const sh = ibtn("chev", "hc", toggle(key), shut ? "Expand" : "Collapse", !shut), nm = btn(sa.name, "subh", () => setView(`${l.id}|${sa.id}`, true), "Open this project");
       body.append(secRow("", sh, nm));
       if (!shut) body.append(...mineSa.map((t) => row(t, td)));
     }
@@ -229,10 +233,12 @@ function render() {
   if (isArea() && !(cur() && (!vSub() || cur().subs.some((s) => s.id === vSub())))) view = "today"; // that area or subarea was deleted, here or on another device
   const mine = tasks.filter(inView);
   list.textContent = "";
-  $("lren").hidden = $("ldel").hidden = $("sadd").hidden = !isArea() || !!vSub();
+  $("lren").hidden = $("ldel").hidden = !isArea(); $("sadd").hidden = !isArea() || !!vSub(); $("hadd").hidden = !vSub();
+  $("lren").textContent = vSub() ? "Rename project" : "Rename area"; $("ldel").textContent = vSub() ? "Delete project" : "Delete area";
   $("clear").hidden = !(view === "done" && mine.length);
   $("meta").textContent = "";
   list.classList.toggle("up", view === "upcoming");
+  $("back").hidden = !trail.length;
   list.classList.toggle("board", view === "board"); document.body.classList.toggle("board", view === "board");
   const EMPTY = { inbox: "Inbox is empty. Dump a thought above.", today: "Nothing for today. Give a task a date to see it here.", upcoming: "Nothing scheduled. Give a task a future date to see it here.", done: "Nothing completed yet." };
   if (!mine.length && view !== "board" && !(isArea() && cur()?.subs.length)) list.innerHTML = `<div class="empty">${EMPTY[view] ?? "This area is empty."}</div>`;
@@ -278,7 +284,7 @@ function render() {
       const later = inside.filter((t) => t.date > td).sort(byDate), key = `up:${item.id}`; // future tasks get their own Upcoming row, closed until opened
       inside = inside.filter((t) => !(t.date > td));
       const fold = ibtn("chev", "hc", () => { if (shut) folded.delete(item.id); else folded.add(item.id); try { localStorage.setItem(FOLD, JSON.stringify([...folded])); } catch {} render(); }, shut ? "Expand" : "Collapse", !shut);
-      const hl = Object.assign(secRow("", fold, btn(item.name, "hn", () => renameItem(item), "Rename"), ...extra, ibtn("x", "hx", () => deleteItem(item, isSub), isSub ? "Delete project" : "Delete heading")), { className: `sec ${cls}` });
+      const hl = Object.assign(secRow("", fold, isSub && !vSub() ? btn(item.name, "hn", () => setView(`${vArea()}|${item.id}`, true), "Open this project") : btn(item.name, "hn", () => renameItem(item), "Rename"), ...extra, ibtn("x", "hx", () => deleteItem(item, isSub), isSub ? "Delete project" : "Delete heading")), { className: `sec ${cls}` });
       Object.assign(hl.dataset, ds); // dragging a task onto the header files the task under it
       list.append(hl);
       if (!shut) inside.forEach((t) => list.append(row(t, td)));
@@ -422,24 +428,40 @@ $("tabs").addEventListener("keydown", (e) => { // Alt+Up/Down moves the focused 
   [meta.lists[i], meta.lists[j]] = [meta.lists[j], meta.lists[i]]; meta.ou = now(); commit();
   $("tabs").querySelector(`[data-lid="${g.dataset.lid}"] > .nav`)?.focus();
 });
+$("back").onclick = () => { if (trail.length) goView(trail.pop()); };
 $("menu").onclick = () => document.body.classList.add("menu");
 $("scrim").onclick = () => document.body.classList.remove("menu");
+// Phone: swipe right from the left edge opens the sidebar, swipe left closes it.
+const phone = matchMedia("(max-width: 767px)");
+let sw = null;
+addEventListener("touchstart", (e) => {
+  const p = e.touches[0], open = document.body.classList.contains("menu");
+  sw = phone.matches && e.touches.length === 1 && (open || p.clientX < 24) ? { x: p.clientX, y: p.clientY, open } : null;
+}, { passive: true });
+addEventListener("touchmove", (e) => {
+  if (!sw) return;
+  const p = e.touches[0], dx = p.clientX - sw.x, dy = p.clientY - sw.y;
+  if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 12) sw = null; // a scroll, not a swipe
+  else if (sw.open ? dx < -60 : dx > 60) { document.body.classList.toggle("menu", !sw.open); sw = null; }
+}, { passive: true });
 
 async function newArea() {
   const name = (await ask({ title: "New area", text: "Home, Finances, Work…", input: "", ok: "Create" }))?.slice(0, 40);
   if (!name) return;
   const l = { id: newId(), name, u: now(), heads: [], subs: [] };
   meta.lists.push(l);
-  view = l.id; try { localStorage.setItem(VIEW, view); } catch {}
-  commit();
+  commit(); setView(l.id);
 }
 const cur = () => meta.lists.find((l) => l.id === vArea());
 $("lren").onclick = async () => {
+  const sub = vSub() && cur()?.subs.find((s) => s.id === vSub());
+  if (sub) return renameItem(sub);
   const l = cur(), name = l && (await ask({ title: "Rename area", input: l.name, ok: "Save" }))?.slice(0, 40);
   if (name) { l.name = name; l.u = now(); commit(); }
 };
 $("ldel").onclick = async () => {
-  const l = cur();
+  const l = cur(), sub = vSub() && l?.subs.find((s) => s.id === vSub());
+  if (sub) { await deleteItem(sub, true); if (!l.subs.includes(sub)) setView(l.id); return; } // back to the area once it is gone
   if (!l) return;
   const mine = tasks.filter((t) => t.l === l.id);
   if (!(await ask({ title: "Delete area?", text: `"${l.name}" goes away. Its ${mine.length} tasks stay, in Today if they have a date and in the Inbox if not.`, ok: "Delete", danger: true }))) return;
@@ -485,7 +507,7 @@ list.addEventListener("change", (e) => {
 list.addEventListener("click", async (e) => {
   if (e.target.closest("a")) return; // a link in a note opens the link, not the sheet
   if (e.target.closest(".when, .cal, .note")) return openWhen(byId(e.target));
-  if (e.target.classList.contains("area")) return setView(byId(e.target).l);
+  if (e.target.classList.contains("area")) return setView(byId(e.target).l, true);
   if (e.target.classList.contains("tc")) { const id = byId(e.target).id; if (!folded.delete(id)) folded.add(id); try { localStorage.setItem(FOLD, JSON.stringify([...folded])); } catch {} return render(); }
   if (e.target.classList.contains("t") && !e.target.isContentEditable) return edit(e.target); // one click edits the text in place
   if (!e.target.classList.contains("x")) return;
@@ -563,7 +585,13 @@ wd.querySelectorAll("[data-d]").forEach((b) => {
     applyWhen({ today: today(), evening: today(), tomorrow: addDays(today(), 1), monday: nextMonday(today()) }[k], k === "evening" ? true : k === "today" ? false : undefined); // "Today" clears the evening flag, "Evening" sets it, the others keep it
   };
 });
-["wdate", "wtime", "runit", "rn", "rmode"].forEach((id) => ($(id).onchange = () => applyWhen()));
+["wdate", "runit", "rn", "rmode"].forEach((id) => ($(id).onchange = () => applyWhen()));
+// The time is typed in 24-hour form ("13", "1330", "13:30"): a native time input follows the phone's 12-hour setting.
+$("wtime").onchange = () => {
+  const s = $("wtime").value.trim(), m = s.match(/^(\d{1,2})(?::?(\d{2}))?$/);
+  $("wtime").value = !s ? "" : m && +m[1] < 24 && +(m[2] ?? 0) < 60 ? `${m[1].padStart(2, "0")}:${m[2] ?? "00"}` : tasks.find((x) => x.id === wid)?.tm ?? "";
+  applyWhen();
+};
 $("wlist").onchange = () => {
   const t = tasks.find((x) => x.id === wid);
   if (!t) return;
@@ -599,6 +627,7 @@ $("wchk").onchange = (e) => {
 $("wchk").oninput = (e) => { if (e.target.type === "text" && e.target.value.trim()) edited((t) => { t.c.find((c) => c.id === itemId(e)).text = e.target.value.trim().slice(0, 200); }); };
 $("wchk").onclick = (e) => { if (e.target.classList.contains("cx")) fillChecks(edited((t) => rmItem(t, itemId(e)))); };
 $("sadd").onclick = addSub;
+$("hadd").onclick = () => { const sa = cur()?.subs.find((s) => s.id === vSub()); if (sa) addHead(sa); };
 $("wclear").onclick = () => { $("runit").value = ""; $("wtime").value = ""; applyWhen(""); };
 $("wtclear").onclick = () => { $("wtime").value = ""; applyWhen(); };
 $("wclose").onclick = () => wd.close();
@@ -693,15 +722,16 @@ const endDrag = (e) => {
 list.addEventListener("pointerup", endDrag);
 list.addEventListener("pointercancel", endDrag);
 
-// Drag a subarea header to reorder: its headings and tasks travel with it. Same gestures as tasks: mouse after 5px, touch after a hold.
-const blockOf = (h) => { // a subarea's rows: its header, then everything up to the next subarea or a plain section like "Upcoming"
-  const out = [h];
-  for (let n = h.nextElementSibling; n && !n.matches("li.sec.sub") && !(n.matches("li.sec") && !n.matches(".head, .ups")); n = n.nextElementSibling) out.push(n);
+// Drag a project or heading header to reorder: its headings (for a project) and tasks travel with it; a heading stays within its project. Same gestures as tasks: mouse after 5px, touch after a hold.
+const blockOf = (h) => { // a project's rows: its header, then everything up to the next project or a plain section like "Upcoming"; a heading's: up to the next header
+  const out = [h], sub = h.matches(".sub");
+  for (let n = h.nextElementSibling; n && !(sub ? n.matches("li.sec.sub") || (n.matches("li.sec") && !n.matches(".head, .ups")) : n.matches("li.sec")); n = n.nextElementSibling) out.push(n);
   return out;
 };
 list.addEventListener("pointerdown", (e) => {
-  const h = e.target.closest("li.sec.sub");
+  const h = e.target.closest("li.sec.sub, li.sec.head");
   if (!h || e.button > 0 || e.target.closest(".hc, .ha, .hx")) return;
+  const sel = h.matches(".sub") ? "li.sec.sub" : `li.sec.head[data-hs="${h.dataset.hs}"]`; // the siblings it can swap with
   const touch = e.pointerType !== "mouse", x0 = e.clientX, y0 = e.clientY;
   let on = false, timer, eat;
   const start = () => { on = true; h.classList.add("drag"); h.setPointerCapture(e.pointerId); navigator.vibrate?.(8); getSelection()?.removeAllRanges(); };
@@ -712,7 +742,7 @@ list.addEventListener("pointerdown", (e) => {
       if (touch) return stop(); // a scroll
       start();
     }
-    for (const o of list.querySelectorAll("li.sec.sub")) {
+    for (const o of list.querySelectorAll(sel)) {
       const r = o.getBoundingClientRect();
       if (o === h || m.clientY < r.top || m.clientY > r.bottom) continue;
       const mine = blockOf(h), theirs = blockOf(o);
@@ -728,8 +758,13 @@ list.addEventListener("pointerdown", (e) => {
     if (!on) return;
     h.classList.remove("drag");
     eat = (c) => c.stopPropagation(); addEventListener("click", eat, true); setTimeout(() => removeEventListener("click", eat, true), 0); // a drag must not also rename
-    const l = cur(), ids = [...list.querySelectorAll("li.sec.sub")].map((o) => o.dataset.sid);
-    if (l && ids.join() !== l.subs.map((s) => s.id).join()) { l.subs = ids.map((id) => l.subs.find((s) => s.id === id)); l.u = now(); commit(); }
+    const l = cur(), isSub = h.matches(".sub"), group = isSub ? l?.subs : l?.subs.find((s) => s.id === h.dataset.hs)?.heads;
+    const ids = [...list.querySelectorAll(sel)].map((o) => (isSub ? o.dataset.sid : o.dataset.hid));
+    if (group && ids.join() !== group.map((s) => s.id).join()) {
+      const re = ids.map((id) => group.find((s) => s.id === id));
+      if (isSub) l.subs = re; else l.subs.find((s) => s.id === h.dataset.hs).heads = re;
+      l.u = now(); commit();
+    }
   };
   addEventListener("pointermove", move); addEventListener("pointerup", stop); addEventListener("pointercancel", stop); addEventListener("touchmove", block, { passive: false });
   if (touch) timer = setTimeout(start, 300);
@@ -833,7 +868,12 @@ function showDialog() {
 // ---- Reminders ----
 // Web Push: the Worker's cron job pushes at the due time and the service worker shows it, so the app can be closed.
 // This device uploads its subscription and the timed tasks due in the next 14 days; see sync.js.
-const dueList = () => tasks.filter((t) => !t.done && t.date && t.tm).map((t) => ({ k: t.id, at: new Date(`${t.date}T${t.tm}`).getTime(), t: t.text })).filter((r) => r.at > now() && r.at < now() + 14 * 864e5).sort((a, b) => a.at - b.at).slice(0, 100);
+// The notification shows the task as its title, the time and place as its line, and opens the task's area or project on tap.
+const remInfo = (t) => {
+  const l = meta.lists.find((x) => x.id === t.l), sa = l && subOf(l, t);
+  return { c: [t.tm, l && [l.name, sa?.name].filter(Boolean).join(" › ")].filter(Boolean).join(" · "), v: l ? (sa ? `${l.id}|${sa.id}` : l.id) : "today" };
+};
+const dueList = () => tasks.filter((t) => !t.done && t.date && t.tm).map((t) => ({ k: t.id, at: new Date(`${t.date}T${t.tm}`).getTime(), t: t.text, ...remInfo(t) })).filter((r) => r.at > now() && r.at < now() + 14 * 864e5).sort((a, b) => a.at - b.at).slice(0, 100);
 const remSay = (s) => { $("remst").textContent = s; };
 const keep = (key) => new Promise((res, rej) => { // the service worker reads the data key from here to decrypt a push
   const r = indexedDB.open("braindump", 1);
@@ -885,7 +925,7 @@ $("remt").onclick = async () => { // one reminder in 5 seconds; the cron job sen
   try {
     if (Notification.permission !== "granted") throw new Error("notifications are not allowed; turn reminders off and on");
     const sub = await pushSub();
-    await keep(await putReminders(code, sub.toJSON(), [{ k: "test", at: now() + 5000, t: "Reminders work ✓" }]));
+    await keep(await putReminders(code, sub.toJSON(), [{ k: "test", at: now() + 5000, t: "Test reminder", c: "It works ✓" }]));
     remSent = "";
     remSay("Test sent. It arrives within a minute.");
   } catch (e) { remSay(`Test failed: ${e.message}`); }
@@ -907,6 +947,12 @@ $("copyl").onclick = (e) => copy(link(), e.target);
 $("copyc").onclick = (e) => copy(code, e.target);
 $("now").onclick = () => runSync();
 $("offb").onclick = async () => { if (await ask({ title: "Turn off sync?", text: "Your tasks here stay. The synced copy stays on the server.", ok: "Turn off", danger: true })) setCode(null); };
+
+// Tapping a reminder opens its area or project: a running app gets a message, a closed one a ?view= link.
+const goto = (v) => { if (v) setView(v); };
+navigator.serviceWorker?.addEventListener("message", (e) => goto(e.data?.view));
+const openView = new URLSearchParams(location.search).get("view");
+if (openView) { history.replaceState(null, "", location.pathname + location.hash); goto(openView); }
 
 // A #sync=<code> link joins this device. Confirm first: a link from someone else would upload your tasks to their list.
 const joinHash = location.hash.match(/^#sync=([A-Za-z0-9_-]{22})$/);

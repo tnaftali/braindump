@@ -39,8 +39,8 @@
   <header class="top">
     <div class="head">
       <button class="iconbtn" id="menu" type="button" aria-label="Open menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      <button class="iconbtn" id="back" type="button" aria-label="Back" title="Back" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
       <h1 id="vt">Today</h1>
-      <span class="lastsync" id="lastsync"></span>
       <button class="iconbtn" id="refresh" type="button" aria-label="Sync now" title="Sync now"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg></button>
       <button class="iconbtn" id="theme" type="button" aria-label="Toggle theme"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button>
       <button class="iconbtn" id="gear" type="button" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.220 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.730l-.43.250a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.730.73l-.22.380a2 2 0 0 0 .73 2.730l.15.100a2 2 0 0 1 1 1.720v.51a2 2 0 0 1-1 1.740l-.15.090a2 2 0 0 0-.73 2.730l.22.380a2 2 0 0 0 2.730.73l.15-.08a2 2 0 0 1 2 0l.43.250a2 2 0 0 1 1 1.730V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.730l.43-.25a2 2 0 0 1 2 0l.15.080a2 2 0 0 0 2.730-.73l.22-.39a2 2 0 0 0-.73-2.730l-.15-.08a2 2 0 0 1-1-1.740v-.5a2 2 0 0 1 1-1.740l.15-.09a2 2 0 0 0 .73-2.730l-.22-.38a2 2 0 0 0-2.730-.73l-.15.080a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.730V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
@@ -55,10 +55,12 @@
   <div class="foot">
     <span id="meta"></span>
     <button id="clear" type="button" hidden>Delete all completed</button>
+    <button id="hadd" type="button" hidden>Add heading</button>
     <button id="lren" type="button" hidden>Rename area</button>
     <button id="sadd" type="button" hidden>Add project</button>
     <button id="ldel" type="button" hidden>Delete area</button>
     <span class="sp"></span>
+    <span class="lastsync" id="lastsync"></span>
   </div>
 </main>
 </div>
@@ -79,7 +81,7 @@
   </div>
   <div class="row when">
     <input type="date" id="wdate" aria-label="Date">
-    <input type="time" id="wtime" aria-label="Time" step="300">
+    <input type="text" id="wtime" aria-label="Time, 24-hour" placeholder="HH:MM" inputmode="numeric" maxlength="5" autocomplete="off">
     <button type="button" id="wtclear" aria-label="Clear time" title="Clear time"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   </div>
   <p class="sub">Repeat</p>

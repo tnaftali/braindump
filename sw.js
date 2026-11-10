@@ -1,6 +1,6 @@
 // Offline cache, stale-while-revalidate: answer from cache, refresh it in the background.
 // A deploy shows up on the second launch. Bump VERSION to drop the old cache outright.
-const VERSION = "v74";
+const VERSION = "v84";
 const SHELL = [
   "./",
   "index.html",
@@ -41,18 +41,23 @@ const dataKey = () => new Promise((res) => {
 const title = async (b) => {
   const raw = Uint8Array.from(atob(b), (c) => c.charCodeAt(0));
   const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: raw.subarray(0, 12) }, await dataKey(), raw.subarray(12));
-  return JSON.parse(new TextDecoder().decode(pt)).t;
+  return JSON.parse(new TextDecoder().decode(pt));
 };
 self.addEventListener("push", (e) => {
   e.waitUntil((async () => { // iOS needs a notification for every push, so fall back to a generic one
-    let body = "A task is due", k = "";
-    try { const m = e.data.json(); k = m.k; body = await title(m.b); } catch {}
-    await self.registration.showNotification("Tasks", { body, tag: k, icon: "icon-192.png" });
+    let t = "A task is due", c = "", v = "", k = "";
+    try { const m = e.data.json(); k = m.k; ({ t, c = "", v = "" } = await title(m.b)); } catch {}
+    await self.registration.showNotification(t, { body: c, tag: k, icon: "icon-192.png", data: { v } });
   })());
 });
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();
-  e.waitUntil(clients.matchAll({ type: "window" }).then((cs) => (cs[0] ? cs[0].focus() : clients.openWindow("./"))));
+  const v = e.notification.data?.v;
+  e.waitUntil(clients.matchAll({ type: "window" }).then(async (cs) => {
+    if (!cs[0]) return clients.openWindow(v ? `./?view=${encodeURIComponent(v)}` : "./");
+    await cs[0].focus();
+    if (v) cs[0].postMessage({ view: v });
+  }));
 });
 
 self.addEventListener("fetch", (e) => {
