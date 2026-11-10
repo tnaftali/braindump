@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Brain Dump</title>
 <meta name="description" content="Quick-capture task list. Offline, private, no account.">
 <meta name="theme-color" content="#e6e0d2">
@@ -40,31 +40,29 @@
     <div class="head">
       <button class="iconbtn" id="menu" type="button" aria-label="Open menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
       <h1 id="vt">Today</h1>
-      <span class="count" id="count"></span>
+      <span class="lastsync" id="lastsync"></span>
       <button class="iconbtn" id="refresh" type="button" aria-label="Sync now" title="Sync now"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg></button>
       <button class="iconbtn" id="theme" type="button" aria-label="Toggle theme"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button>
+      <button class="iconbtn" id="gear" type="button" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.220 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.730l-.43.250a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.730.73l-.22.380a2 2 0 0 0 .73 2.730l.15.100a2 2 0 0 1 1 1.720v.51a2 2 0 0 1-1 1.740l-.15.090a2 2 0 0 0-.73 2.730l.22.380a2 2 0 0 0 2.730.73l.15-.08a2 2 0 0 1 2 0l.43.250a2 2 0 0 1 1 1.730V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.730l.43-.25a2 2 0 0 1 2 0l.15.080a2 2 0 0 0 2.730-.73l.22-.39a2 2 0 0 0-.73-2.730l-.15-.08a2 2 0 0 1-1-1.740v-.5a2 2 0 0 1 1-1.740l.15-.09a2 2 0 0 0 .73-2.730l-.22-.38a2 2 0 0 0-2.730-.73l-.15.080a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.730V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
     </div>
     <form id="f">
       <input id="in" placeholder="What's on your mind?" autocomplete="off" enterkeyhint="done" aria-label="New task">
       <button>Add</button>
     </form>
-    <p class="hint">Press <kbd>Enter</kbd> to add · <kbd>/</kbd> to focus from anywhere · paste links, they become chips · double-click text to edit · drag <b>⋮⋮</b> to reorder</p>
+    <p class="hint">Press <kbd>Enter</kbd> to add · <kbd>/</kbd> to focus from anywhere · paste links, they become chips · click text to edit · drag or <kbd>Alt</kbd>+<kbd>↑</kbd><kbd>↓</kbd> to reorder</p>
   </header>
   <ul id="list"></ul>
   <div class="foot">
     <span id="meta"></span>
     <button id="clear" type="button" hidden>Delete all completed</button>
     <button id="lren" type="button" hidden>Rename area</button>
-    <button id="sadd" type="button" hidden>Add subarea</button>
+    <button id="sadd" type="button" hidden>Add project</button>
     <button id="ldel" type="button" hidden>Delete area</button>
     <span class="sp"></span>
-    <button id="syncb" type="button">Sync</button>
-    <button id="export" type="button">Export</button>
-    <button id="import" type="button">Import</button>
-    <input id="file" type="file" accept="application/json,.json" hidden>
   </div>
 </main>
 </div>
+<div id="toast" role="status" hidden></div>
 <dialog id="whend" aria-labelledby="whent">
   <h2 id="whent">Task details</h2>
   <input id="wtitle" type="text" maxlength="500" autocomplete="off" aria-label="Task title">
@@ -82,7 +80,7 @@
   <div class="row when">
     <input type="date" id="wdate" aria-label="Date">
     <input type="time" id="wtime" aria-label="Time" step="300">
-    <button type="button" id="wtclear" aria-label="Clear time" title="Clear time">×</button>
+    <button type="button" id="wtclear" aria-label="Clear time" title="Clear time"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   </div>
   <p class="sub">Repeat</p>
   <div class="row">
@@ -117,7 +115,8 @@
   </form>
 </dialog>
 <dialog id="dlg" aria-labelledby="dlgt">
-  <h2 id="dlgt">Sync devices</h2>
+  <h2 id="dlgt">Settings</h2>
+  <p class="sub first">Sync</p>
   <div id="offv">
     <p>Keep the same tasks on every device. Your tasks are encrypted on this device before they leave it. The server stores only unreadable data.</p>
     <button class="primary" id="on" type="button">Turn on sync</button>
@@ -142,10 +141,17 @@
       <button id="remt" type="button" hidden>Send a test</button>
     </div>
     <p id="remst" class="st" role="status"></p>
-    <p class="sub">On your other device: open the link, or choose Sync → paste the code. On iPhone the installed app and Safari keep separate data, so join inside the app.</p>
+    <p class="sub">On your other device: open the link, or open Settings → paste the code. On iPhone the installed app and Safari keep separate data, so join inside the app.</p>
     <button class="danger" id="offb" type="button">Turn off on this device</button>
   </div>
   <p id="st" class="st" role="status"></p>
+  <p class="sub">Backup</p>
+  <p>Save all your tasks and areas to a file, or replace them from one.</p>
+  <div class="row">
+    <button id="export" type="button">Export</button>
+    <button id="import" type="button">Import</button>
+  </div>
+  <input id="file" type="file" accept="application/json,.json" hidden>
   <button class="close" id="close" type="button">Close</button>
 </dialog>
 </body>
