@@ -1,6 +1,6 @@
 // Offline cache, stale-while-revalidate: answer from cache, refresh it in the background.
 // A deploy shows up on the second launch. Bump VERSION to drop the old cache outright.
-const VERSION = "v86";
+const VERSION = "v87";
 const SHELL = [
   "./",
   "index.html",
@@ -40,13 +40,15 @@ const dataKey = () => new Promise((res) => {
 });
 const title = async (b) => {
   const raw = Uint8Array.from(atob(b), (c) => c.charCodeAt(0));
-  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: raw.subarray(0, 12) }, await dataKey(), raw.subarray(12));
+  const key = await dataKey();
+  if (!key) throw new Error("no key");
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: raw.subarray(0, 12) }, key, raw.subarray(12));
   return JSON.parse(new TextDecoder().decode(pt));
 };
 self.addEventListener("push", (e) => {
   e.waitUntil((async () => { // iOS needs a notification for every push, so fall back to a generic one
     let t = "A task is due", c = "", v = "", k = "";
-    try { const m = e.data.json(); k = m.k; ({ t, c = "", v = "" } = await title(m.b)); } catch (err) { c = `Open Tasks to fix reminders (${err?.name ?? err})`; } // say why: a bare fallback hides a missing key
+    try { const m = e.data.json(); k = m.k; ({ t, c = "", v = "" } = await title(m.b)); } catch (err) { c = `Open Tasks to fix reminders (${err?.message ?? err})`; } // say why: a bare fallback hides a missing key
     await self.registration.showNotification(t, { body: c, tag: k, icon: "icon-192.png", data: { v } });
   })());
 });
