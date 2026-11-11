@@ -1,6 +1,6 @@
 // Offline cache, stale-while-revalidate: answer from cache, refresh it in the background.
 // A deploy shows up on the second launch. Bump VERSION to drop the old cache outright.
-const VERSION = "v87";
+const VERSION = "v88";
 const SHELL = [
   "./",
   "index.html",
@@ -40,8 +40,9 @@ const dataKey = () => new Promise((res) => {
 });
 const title = async (b) => {
   const raw = Uint8Array.from(atob(b), (c) => c.charCodeAt(0));
-  const key = await dataKey();
+  let key = await dataKey();
   if (!key) throw new Error("no key");
+  if (!(key instanceof CryptoKey)) key = await crypto.subtle.importKey("raw", key, "AES-GCM", false, ["decrypt"]); // the page stores the raw bytes
   const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: raw.subarray(0, 12) }, key, raw.subarray(12));
   return JSON.parse(new TextDecoder().decode(pt));
 };

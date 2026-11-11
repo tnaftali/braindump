@@ -949,7 +949,7 @@ $("now").onclick = () => runSync();
 $("offb").onclick = async () => { if (await ask({ title: "Turn off sync?", text: "Your tasks here stay. The synced copy stays on the server.", ok: "Turn off", danger: true })) setCode(null); };
 
 // Save the data key on every start, not only when reminders go on: a push can arrive before they are switched on again.
-if (code) derive(code).then((d) => keep(d.key)).catch(() => {});
+if (code) derive(code).then((d) => keep(d.raw)).catch(() => {});
 // A reinstalled app has no saved data key or reminder flag, yet its push subscription can live on: the service worker then cannot read a push
 // and shows "A task is due". Spotting the subscription turns reminders back on, which saves the key again.
 if (code && navigator.serviceWorker && "PushManager" in window) navigator.serviceWorker.ready.then((r) => r.pushManager.getSubscription()).then((sub) => {

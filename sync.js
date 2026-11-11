@@ -29,8 +29,8 @@ export const parseCode = (s) => {
 export async function derive(code) {
   if (!globalThis.crypto?.subtle) throw new Error("encryption needs HTTPS or localhost");
   const hex = async (s) => [...(await sha(s))].map((b) => b.toString(16).padStart(2, "0")).join("");
-  const key = await crypto.subtle.importKey("raw", await sha("key:" + code), "AES-GCM", false, ["encrypt", "decrypt"]);
-  return { id: await hex("id:" + code), wk: await hex("w:" + code), key };
+  const raw = await sha("key:" + code), key = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
+  return { id: await hex("id:" + code), wk: await hex("w:" + code), key, raw };
 }
 
 export async function encrypt(key, obj) {
@@ -48,13 +48,13 @@ export async function decrypt(key, text) {
 }
 
 // Reminders: send this device's push subscription and the reminders due soon ([{ k: task id, at: ms, t: title }]).
-// The server learns the times only: each title is encrypted with the data key. Returns that key, which the service worker needs to read a push.
+// The server learns the times only: each title is encrypted with the data key. Returns the raw key bytes: the service worker needs them to read a push, and iOS Safari is unreliable at storing a CryptoKey.
 export async function putReminders(code, sub, rem, off = false) {
-  const { id, wk, key } = await derive(code);
+  const { id, wk, key, raw } = await derive(code);
   const body = JSON.stringify({ sub, off, rem: await Promise.all(rem.map(async (r) => ({ k: r.k, at: r.at, b: await encrypt(key, { t: r.t.slice(0, 140), c: r.c?.slice(0, 140), v: r.v?.slice(0, 80) }) }))) });
   const res = await fetch(PUSH_API + id, { method: "PUT", headers: { "X-Write-Key": wk }, body });
   if (res.status !== 204) throw new Error(`reminders ${res.status}`);
-  return key;
+  return raw;
 }
 
 // Pull, merge, push if the merge changed anything. Returns the merged side. Throws on failure.
