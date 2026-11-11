@@ -1,6 +1,6 @@
 // Offline cache, stale-while-revalidate: answer from cache, refresh it in the background.
 // A deploy shows up on the second launch. Bump VERSION to drop the old cache outright.
-const VERSION = "v84";
+const VERSION = "v86";
 const SHELL = [
   "./",
   "index.html",
@@ -46,7 +46,7 @@ const title = async (b) => {
 self.addEventListener("push", (e) => {
   e.waitUntil((async () => { // iOS needs a notification for every push, so fall back to a generic one
     let t = "A task is due", c = "", v = "", k = "";
-    try { const m = e.data.json(); k = m.k; ({ t, c = "", v = "" } = await title(m.b)); } catch {}
+    try { const m = e.data.json(); k = m.k; ({ t, c = "", v = "" } = await title(m.b)); } catch (err) { c = `Open Tasks to fix reminders (${err?.name ?? err})`; } // say why: a bare fallback hides a missing key
     await self.registration.showNotification(t, { body: c, tag: k, icon: "icon-192.png", data: { v } });
   })());
 });

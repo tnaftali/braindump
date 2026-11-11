@@ -892,7 +892,7 @@ async function pushSub() {
   return (await pm.getSubscription()) ?? pm.subscribe({ userVisibleOnly: true, applicationServerKey: Uint8Array.from(atob(VAPID_PUBLIC.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0)) });
 }
 async function pushReminders(list = dueList()) {
-  const s = JSON.stringify(list.map((r) => [r.k, r.at, r.t]));
+  const s = JSON.stringify(list.map((r) => [r.k, r.at, r.t, r.c, r.v]));
   if (s === remSent) return;
   const sub = await pushSub();
   await keep(await putReminders(code, sub.toJSON(), list));
@@ -948,6 +948,13 @@ $("copyc").onclick = (e) => copy(code, e.target);
 $("now").onclick = () => runSync();
 $("offb").onclick = async () => { if (await ask({ title: "Turn off sync?", text: "Your tasks here stay. The synced copy stays on the server.", ok: "Turn off", danger: true })) setCode(null); };
 
+// A reinstalled app has no saved data key or reminder flag, yet its push subscription can live on: the service worker then cannot read a push
+// and shows "A task is due". Spotting the subscription turns reminders back on, which saves the key again.
+if (code && navigator.serviceWorker && "PushManager" in window) navigator.serviceWorker.ready.then((r) => r.pushManager.getSubscription()).then((sub) => {
+  if (!sub || remOn || Notification.permission !== "granted") return;
+  remOn = true; try { localStorage.setItem(REM, "1"); } catch {}
+  remQueue(500);
+}).catch(() => {});
 // Tapping a reminder opens its area or project: a running app gets a message, a closed one a ?view= link.
 const goto = (v) => { if (v) setView(v); };
 navigator.serviceWorker?.addEventListener("message", (e) => goto(e.data?.view));
