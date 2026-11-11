@@ -1,8 +1,31 @@
 # Tasks
 
-A quick-capture task list that lives on your phone. Offline, private, no account.
+A quick-capture task list for phone and desktop. Installable PWA, works offline, no account. Optional end-to-end encrypted sync between devices and optional reminders.
 
-Type a thought, press Enter, done. Paste a URL (a PR, a doc) and it becomes a chip. Drag `⋮⋮` to reorder. Tap the circle to finish a task.
+Type a thought, press Enter, done. Paste a URL (a PR, a doc) and it becomes a chip. Tap the circle to finish a task.
+
+## What it does
+
+- **Views:** Inbox, Today (with an Evening group), Upcoming, Done and a Board with one column per area.
+- **Areas, projects and headings:** group tasks into areas, split an area into projects, and add headings inside a project. Open a project from the area view. A Back button returns you after you go deep.
+- **Natural dates:** type "call Sam tomorrow 3pm" and the date and time are set. Time uses the 24-hour form (`15:00`). Tasks can also repeat.
+- **Task sheet:** date, time, repeat, area, project, notes and a checklist per task.
+- **Reorder by hand:** drag tasks, projects and headings (touch: press and hold), or use `Alt` + `↑`/`↓`. Folded state is kept on each device.
+- **Phone gestures:** swipe from the left edge to open the sidebar.
+- **Undo:** deleting a task shows an Undo bar.
+- **Backup:** Export and Import at the bottom of the list.
+
+## Screenshots
+
+Sample data, not real tasks.
+
+| Today | Board |
+| --- | --- |
+| ![Today view with timed reminders and an evening group](docs/today.png) | ![Board with one column per area](docs/board.png) |
+
+| Project with headings | Phone |
+| --- | --- |
+| ![A project split under two headings](docs/project.png) | <img src="docs/phone-today.png" alt="Today view on a phone" width="260"> |
 
 **Open the app:** https://tnaftali.github.io/tasks/
 
