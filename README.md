@@ -1,6 +1,14 @@
-# Tasks
+<p align="center">
+  <img src="icon-512.png" width="96" alt="Tasks icon">
+</p>
 
-A quick-capture task list for phone and desktop. Installable PWA, works offline, no account. Optional end-to-end encrypted sync between devices and optional reminders.
+<h1 align="center">Tasks</h1>
+
+<p align="center">
+  A quick-capture task list for phone and desktop. Installable PWA, works offline, no account.<br>
+  Optional end-to-end encrypted sync and reminders.<br>
+  <a href="https://tnaftali.github.io/tasks/"><strong>Open the app →</strong></a>
+</p>
 
 Type a thought, press Enter, done. Paste a URL (a PR, a doc) and it becomes a chip. Tap the circle to finish a task.
 
@@ -17,17 +25,16 @@ Type a thought, press Enter, done. Paste a URL (a PR, a doc) and it becomes a ch
 
 ## Screenshots
 
-Sample data, not real tasks.
+Sample data, not real tasks. The theme follows the system and has a manual toggle.
 
-| Today | Board |
+| Light | Dark |
 | --- | --- |
-| ![Today view with timed reminders and an evening group](docs/today.png) | ![Board with one column per area](docs/board.png) |
+| ![Today view with timed reminders and an evening group](docs/today.png) | ![Today view, dark](docs/today-dark.png) |
+| ![Board with one column per area](docs/board.png) | ![Board, dark](docs/board-dark.png) |
 
-| Project with headings | Phone |
-| --- | --- |
-| ![A project split under two headings](docs/project.png) | <img src="docs/phone-today.png" alt="Today view on a phone" width="260"> |
-
-**Open the app:** https://tnaftali.github.io/tasks/
+| Project with headings | Phone, light | Phone, dark |
+| --- | --- | --- |
+| ![A project split under two headings](docs/project.png) | <img src="docs/phone-today.png" alt="Today view on a phone" width="200"> | <img src="docs/phone-today-dark.png" alt="Today view on a phone, dark" width="200"> |
 
 ## Install
 
