@@ -30,7 +30,7 @@ const goView = (v) => { view = v; try { localStorage.setItem(VIEW, v); } catch {
 const setView = (v, deep) => { if (v === view) return; trail = deep ? [...trail, view] : []; goView(v); };
 // A task has an optional date and an optional area. Inbox: neither. Today: any date. Area tab: that area's tasks, dated or not.
 const areaOf = (t) => (meta.lists.some((l) => l.id === t.l) ? t.l : ""); // a task of an unknown area counts as having none
-const isArea = () => !["inbox", "today", "upcoming", "done", "board"].includes(view); // a view is a built-in name, an area id, or "area|subarea"
+const isArea = () => !["inbox", "today", "upcoming", "done", "board", "all"].includes(view); // a view is a built-in name, an area id, or "area|subarea"
 const vArea = () => view.split("|")[0], vSub = () => view.split("|")[1] ?? "";
 const NAVFOLD = "braindump.navfold"; // areas whose subareas are hidden in the sidebar; per device
 const navShut = new Set(); try { for (const id of JSON.parse(localStorage.getItem(NAVFOLD) ?? "[]")) navShut.add(id); } catch {}
@@ -110,7 +110,7 @@ function edit(el) {
 }
 
 // Done tasks leave every view except Done, which groups them by the day they were completed.
-const inView = (t) => (view === "done" ? t.done : !t.done && (view === "board" || view === "inbox" ? !areaOf(t) && !t.date : view === "today" ? !!t.date && t.date <= day : view === "upcoming" ? t.date > day : areaOf(t) === vArea() && (!vSub() || subOf(meta.lists.find((l) => l.id === t.l), t)?.id === vSub())));
+const inView = (t) => (view === "done" ? t.done : !t.done && (view === "all" ? true : view === "board" || view === "inbox" ? !areaOf(t) && !t.date : view === "today" ? !!t.date && t.date <= day : view === "upcoming" ? t.date > day : areaOf(t) === vArea() && (!vSub() || subOf(meta.lists.find((l) => l.id === t.l), t)?.id === vSub())));
 const byDate = (a, b) => (a.date + (a.tm ?? "")).localeCompare(b.date + (b.tm ?? "")); // by day, then by time
 const dayOf = (t) => today(new Date(t.dt ?? t.u));
 
@@ -165,7 +165,7 @@ function row(t, td) {
     ci.append(box, Object.assign(document.createElement("span"), { textContent: c.text }));
     body.append(ci);
   }
-  if (!isArea() && view !== "board" && areaOf(t)) { // the area (and subarea) sits under the text; a tap opens that area, the details sheet re-files the task
+  if (!isArea() && view !== "board" && view !== "all" && areaOf(t)) { // the area (and subarea) sits under the text; a tap opens that area, the details sheet re-files the task
     const { l, sa } = placeOf(t);
     body.append(Object.assign(document.createElement("button"), { type: "button", className: "area", title: "Open this area", textContent: sa ? `${l.name} › ${sa.name}` : l.name }));
   }
@@ -175,7 +175,8 @@ function row(t, td) {
   const chip = !!label && !t.done;
   const w = Object.assign(document.createElement("button"), { type: "button", className: "when chip", title: "Date and repeat", textContent: label });
   w.setAttribute("aria-label", "Date and repeat");
-  if (t.tm && !t.done && !past) w.prepend(svg("bell")); // only while the reminder is still to come; a past one keeps its date and time
+  if (t.tm && !t.done && !past) w.prepend(svg("bell"));
+  if (chip && view !== "today" && t.date <= td) w.prepend(svg("today")); // a star marks what is due today (or overdue); the Today view needs none // only while the reminder is still to come; a past one keeps its date and time
   li.append(cal, cb, body, ...(chip ? [w] : []), x);
   return li;
 }
@@ -226,6 +227,24 @@ function renderBoard(mine, td) {
   const open = tasks.filter((t) => !t.done); // shown in full: the date chip on a row says when
   list.append(col("inbox", "Inbox", open.filter((t) => !areaOf(t))), ...meta.lists.map((l) => col(l.id, l.name, open.filter((t) => areaOf(t) === l.id), l)));
 }
+// Everything: every open task in one list, grouped like the Board: the Inbox, then each area with its projects under it.
+function renderAll(mine, td) {
+  const toggle = (key) => () => { if (!folded.delete(key)) folded.add(key); try { localStorage.setItem(FOLD, JSON.stringify([...folded])); } catch {} render(); };
+  const group = (id, name, all, onOpen, l) => {
+    if (!all.length) return;
+    const tasks = [...all.filter((t) => t.date).sort(byDate), ...all.filter((t) => !t.date)]; // coming up first, undated last
+    const key = `all:${id}`, shut = folded.has(key);
+    list.append(secRow("", ibtn("chev", "hc", toggle(key), shut ? "Expand" : "Collapse", !shut), btn(name, "hn", onOpen, "Open")));
+    if (shut) return;
+    list.append(...tasks.filter((t) => !l || !subOf(l, t)).map((t) => row(t, td)));
+    for (const sa of l?.subs ?? []) {
+      const inSa = tasks.filter((t) => subOf(l, t)?.id === sa.id);
+      if (inSa.length) list.append(secRow("", btn(sa.name, "subh", () => setView(`${l.id}|${sa.id}`, true), "Open this project")), ...inSa.map((t) => row(t, td)));
+    }
+  };
+  group("inbox", "Inbox", mine.filter((t) => !areaOf(t)), () => setView("inbox", true));
+  for (const l of meta.lists) group(l.id, l.name, mine.filter((t) => areaOf(t) === l.id), () => setView(l.id, true), l);
+}
 let drawn = 0; // when the list was last drawn
 function render() {
   drawn = now();
@@ -240,9 +259,10 @@ function render() {
   list.classList.toggle("up", view === "upcoming");
   $("back").hidden = !trail.length;
   list.classList.toggle("board", view === "board"); document.body.classList.toggle("board", view === "board");
-  const EMPTY = { inbox: "Inbox is empty. Dump a thought above.", today: "Nothing for today. Give a task a date to see it here.", upcoming: "Nothing scheduled. Give a task a future date to see it here.", done: "Nothing completed yet." };
+  const EMPTY = { inbox: "Inbox is empty. Dump a thought above.", today: "Nothing for today. Give a task a date to see it here.", upcoming: "Nothing scheduled. Give a task a future date to see it here.", done: "Nothing completed yet.", all: "No open tasks." };
   if (!mine.length && view !== "board" && !(isArea() && cur()?.subs.length)) list.innerHTML = `<div class="empty">${EMPTY[view] ?? "This area is empty."}</div>`;
   if (view === "board") renderBoard(mine, td);
+  else if (view === "all") renderAll(mine, td);
   else if (view === "done") {
     let last = "";
     for (const t of mine.sort((a, b) => (b.dt ?? b.u) - (a.dt ?? a.u))) {
@@ -352,6 +372,7 @@ const ICON = { // 24px stroke icons, drawn by style.css
   tomorrow: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6L7 7M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>',
   week: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  all: '<path d="M4 6h16M4 12h16M4 18h16"/>',
   board: '<rect x="3.500" y="4" width="5" height="16" rx="1.500"/><rect x="10" y="4" width="5" height="10" rx="1.500"/><rect x="16.500" y="4" width="4" height="13" rx="1.500"/>',
   chev: '<path d="M9 6l6 6-6 6"/>', // points right; .open turns it down
 };
@@ -370,7 +391,7 @@ function renderTabs(counts) {
   };
   const gap = () => Object.assign(document.createElement("div"), { className: "gap" });
   $("tabs").replaceChildren(
-    item("inbox", "Inbox", "inbox"), item("today", "Today", "today"), item("upcoming", "Upcoming", "upcoming"), item("done", "Done", "done"), item("board", "Board", "board"), gap(),
+    item("inbox", "Inbox", "inbox"), item("today", "Today", "today"), item("upcoming", "Upcoming", "upcoming"), item("done", "Done", "done"), item("board", "Board", "board"), item("all", "Everything", "all"), gap(),
     ...meta.lists.map((l) => { // an area with its subareas under it; the caret hides them
       const g = Object.assign(document.createElement("div"), { className: "ngrp" }), shut = navShut.has(l.id);
       g.dataset.lid = l.id;
@@ -386,7 +407,7 @@ function renderTabs(counts) {
     }), ...(meta.lists.length ? [gap()] : []),
     Object.assign(item("", "New area", "add", newArea), { className: "nav new" }),
   );
-  $("vt").textContent = { inbox: "Inbox", today: "Today", upcoming: "Upcoming", done: "Done", board: "Board" }[view] ?? (vSub() ? cur()?.subs.find((s) => s.id === vSub())?.name : cur()?.name) ?? "";
+  $("vt").replaceChildren(...(ICON[view] && isArea() === false ? [svg(view)] : []), { inbox: "Inbox", today: "Today", upcoming: "Upcoming", done: "Done", board: "Board", all: "Everything" }[view] ?? (vSub() ? cur()?.subs.find((s) => s.id === vSub())?.name : cur()?.name) ?? "");
 }
 // Drag an area up or down in the sidebar. Touch: hold 300 ms first, so a plain swipe still scrolls.
 let swallow = false;
@@ -471,12 +492,44 @@ $("ldel").onclick = async () => {
   setView("today"); commit();
 };
 
+// "#" in the new-task box picks an area or project: type #, filter, Enter or Tab to choose. The choice shows as a chip until the task is added.
+const hl = $("hl"), pk = $("pk"), nin = $("in");
+let pick = null, hitems = [], hfocus = 0;
+const hq = () => /(^|\s)#([^\s#]*)$/.exec(nin.value);
+function setPick(p) { pick = p; pk.hidden = !p; if (p) pk.textContent = `${p.name} ×`; }
+function hdraw() {
+  const m = hq(), q = m?.[2].toLowerCase() ?? "";
+  hitems = !m ? [] : meta.lists.flatMap((l) => [{ l: l.id, name: l.name }, ...l.subs.map((s) => ({ l: l.id, s: s.id, name: `${l.name} › ${s.name}` }))])
+    .map((p) => ({ p, s: kscore(p.name, q) })).filter((x) => x.s).sort((a, b) => b.s - a.s).map((x) => x.p);
+  hfocus = Math.min(hfocus, Math.max(hitems.length - 1, 0));
+  hl.hidden = !hitems.length;
+  hl.replaceChildren(...hitems.map((p, i) => {
+    const li = Object.assign(document.createElement("li"), { role: "option", className: i === hfocus ? "on" : "", textContent: p.name });
+    li.onpointerdown = (e) => { e.preventDefault(); hpick(p); }; // keep the focus in the box
+    return li;
+  }));
+}
+function hpick(p) {
+  nin.value = nin.value.replace(/(^|\s)#[^\s#]*$/, "$1").trimEnd();
+  setPick(p); hdraw(); nin.focus();
+}
+nin.addEventListener("input", () => { hfocus = 0; hdraw(); });
+nin.addEventListener("blur", () => { hl.hidden = true; });
+nin.addEventListener("keydown", (e) => {
+  if (hl.hidden) return;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); hfocus = (hfocus + (e.key === "ArrowDown" ? 1 : -1) + hitems.length) % hitems.length; hdraw(); }
+  else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); hpick(hitems[hfocus]); }
+  else if (e.key === "Escape") hl.hidden = true;
+});
+pk.onclick = () => { setPick(null); nin.focus(); };
 $("f").onsubmit = (e) => {
   e.preventDefault();
   const typed = $("in").value.trim();
   if (!typed) return;
   const { text, ...when } = parseWhen(typed); // "call Sam tomorrow 3pm" sets the date and time
   const place = view === "today" ? { date: today() } : view === "upcoming" ? { date: addDays(today(), 1) } : isArea() ? { l: vArea(), ...(vSub() ? { s: vSub() } : {}) } : {};
+  if (pick) { delete place.l; delete place.s; Object.assign(place, { l: pick.l }, pick.s ? { s: pick.s } : {}); } // "#work" beats the tab on screen
+  setPick(null); hdraw();
   tasks.unshift({ id: newId(), text, done: false, u: now(), ...place, ...when }); // the tab on screen decides where a new task lands
   $("in").value = "";
   commit();
@@ -663,7 +716,7 @@ const startDrag = (d) => {
 };
 list.addEventListener("pointerdown", (e) => {
   const li = e.target.closest("li[data-id]");
-  if (view === "board" || !li || li.classList.contains("future") || e.button > 0 || e.target.closest("button, input, a") || e.target.isContentEditable) return;
+  if (view === "board" || view === "all" || !li || li.classList.contains("future") || e.button > 0 || e.target.closest("button, input, a") || e.target.isContentEditable) return;
   drag = { id: li.dataset.id, li, pid: e.pointerId, y: e.clientY, x0: e.clientX, y0: e.clientY, on: false, over: null, before: false, touch: e.pointerType !== "mouse" };
   if (drag.touch) { const d = drag; d.timer = setTimeout(() => { navigator.vibrate?.(8); startDrag(d); }, 300); }
 });
@@ -979,6 +1032,62 @@ addEventListener("online", () => queue(500));
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { rollover(); queue(300); } });
 setInterval(() => { if (document.visibilityState === "visible") { rollover(); queue(0); } }, 60000); // pick up changes from other devices while the app stays open
 queue(300);
+// Ctrl+K (Cmd+K): jump to a view, area or project. Type to filter, arrows and Enter to pick, Esc to close.
+const kd = $("kbar"), kq = $("kq"), kl = $("kl");
+let kitems = [], kfocus = 0;
+const kscore = (name, q) => { // 0 = no match; a prefix beats a word start, which beats letters in order
+  const n = name.toLowerCase();
+  if (!q) return 1;
+  if (n.startsWith(q)) return 4;
+  if (n.split(/[\s›]+/).some((w) => w.startsWith(q))) return 3;
+  if (n.includes(q)) return 2;
+  let i = 0;
+  for (const ch of n) if (ch === q[i]) i++;
+  return i === q.length ? 1 : 0;
+};
+function kdraw() {
+  const q = kq.value.trim().toLowerCase();
+  const all = [["inbox", "Inbox", "inbox"], ["today", "Today", "today"], ["upcoming", "Upcoming", "upcoming"], ["done", "Done", "done"], ["board", "Board", "board"], ["all", "Everything", "all"],
+    ...meta.lists.flatMap((l) => [[l.id, l.name, "area"], ...l.subs.map((s) => [`${l.id}|${s.id}`, `${l.name} › ${s.name}`, "area"])])];
+  kitems = all.map((x) => ({ x, s: kscore(x[1], q) })).filter((m) => m.s).sort((a, b) => b.s - a.s).map((m) => m.x); // sort is stable: equal scores keep sidebar order
+  kfocus = Math.min(kfocus, Math.max(kitems.length - 1, 0));
+  kl.replaceChildren(...kitems.map(([id, name, ic], i) => {
+    const li = Object.assign(document.createElement("li"), { role: "option", className: i === kfocus ? "on" : "" });
+    li.setAttribute("aria-selected", String(i === kfocus));
+    li.append(svg(ic), Object.assign(document.createElement("span"), { textContent: name }));
+    if (id === view) li.append(Object.assign(document.createElement("em"), { textContent: "here" }));
+    li.onpointermove = () => { if (kfocus !== i) { kfocus = i; kdraw(); } };
+    li.onclick = () => kgo(id);
+    return li;
+  }));
+  if (!kitems.length) kl.append(Object.assign(document.createElement("li"), { className: "none", textContent: "Nothing matches" }));
+  kl.querySelector(".on")?.scrollIntoView({ block: "nearest" });
+}
+function kgo(id) {
+  kd.close();
+  document.body.classList.remove("menu");
+  setView(id);
+}
+kq.oninput = () => { kfocus = 0; kdraw(); };
+kq.onkeydown = (e) => {
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    if (kitems.length) { kfocus = (kfocus + (e.key === "ArrowDown" ? 1 : -1) + kitems.length) % kitems.length; kdraw(); }
+  } else if (e.key === "Enter" && kitems[kfocus]) { e.preventDefault(); kgo(kitems[kfocus][0]); }
+};
+kd.addEventListener("pointerdown", (e) => { if (e.target === kd) kd.close(); }); // a tap outside the box
+addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "k") {
+    e.preventDefault();
+    if (kd.open) return kd.close();
+    kopen();
+  }
+});
+function kopen() {
+  if (document.querySelector("dialog[open]")) return; // not on top of another dialog
+  kq.value = ""; kfocus = 0; kdraw(); kd.showModal(); kq.focus();
+}
+$("jump").onclick = kopen;
 addEventListener("keydown", (e) => {
   const a = document.activeElement;
   if (e.key === "/" && !/INPUT|TEXTAREA/.test(a.tagName) && !a.isContentEditable) { e.preventDefault(); $("in").focus(); }

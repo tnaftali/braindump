@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Tasks</title>
-<meta name="description" content="Quick-capture task list. Offline, private, no account. Optional encrypted sync and reminders.">
+<meta name="description" content="Quick-capture task list with areas, projects, natural-language dates and a Ctrl+K command bar. Offline, private, no account. Optional encrypted sync and reminders.">
 <meta name="theme-color" content="#e6e0d2">
 <meta name="color-scheme" content="light dark">
 <meta name="mobile-web-app-capable" content="yes">
@@ -41,6 +41,7 @@
       <button class="iconbtn" id="menu" type="button" aria-label="Open menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
       <button class="iconbtn" id="back" type="button" aria-label="Back" title="Back" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
       <h1 id="vt">Today</h1>
+      <button class="iconbtn" id="jump" type="button" aria-label="Go to" title="Go to (Ctrl+K)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></button>
       <button class="iconbtn" id="refresh" type="button" aria-label="Sync now" title="Sync now"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg></button>
       <button class="iconbtn" id="theme" type="button" aria-label="Toggle theme"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button>
       <button class="iconbtn" id="gear" type="button" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.220 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.730l-.43.250a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.730.73l-.22.380a2 2 0 0 0 .73 2.730l.15.100a2 2 0 0 1 1 1.720v.51a2 2 0 0 1-1 1.740l-.15.090a2 2 0 0 0-.73 2.730l.22.380a2 2 0 0 0 2.730.73l.15-.08a2 2 0 0 1 2 0l.43.250a2 2 0 0 1 1 1.730V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.730l.43-.25a2 2 0 0 1 2 0l.15.080a2 2 0 0 0 2.730-.73l.22-.39a2 2 0 0 0-.73-2.730l-.15-.08a2 2 0 0 1-1-1.740v-.5a2 2 0 0 1 1-1.740l.15-.09a2 2 0 0 0 .73-2.730l-.22-.38a2 2 0 0 0-2.730-.73l-.15.080a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.730V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
@@ -48,8 +49,10 @@
     <form id="f">
       <input id="in" placeholder="What's on your mind?" autocomplete="off" enterkeyhint="done" aria-label="New task">
       <button>Add</button>
+      <ul id="hl" role="listbox" aria-label="Areas and projects" hidden></ul>
     </form>
-    <p class="hint">Press <kbd>Enter</kbd> to add · <kbd>/</kbd> to focus from anywhere · paste links, they become chips · click text to edit · drag or <kbd>Alt</kbd>+<kbd>↑</kbd><kbd>↓</kbd> to reorder</p>
+    <button id="pk" class="chip" type="button" title="Clear" hidden></button>
+    <p class="hint">Press <kbd>Enter</kbd> to add · <kbd>#</kbd> to pick an area · <kbd>/</kbd> to focus from anywhere · paste links, they become chips · click text to edit · drag or <kbd>Alt</kbd>+<kbd>↑</kbd><kbd>↓</kbd> to reorder</p>
   </header>
   <ul id="list"></ul>
   <div class="foot">
@@ -104,6 +107,10 @@
     <button class="danger" id="wclear" type="button">Clear date</button>
     <button class="close" id="wclose" type="button">Done</button>
   </div>
+</dialog>
+<dialog id="kbar" aria-label="Go to">
+  <input id="kq" type="text" placeholder="Go to…" autocomplete="off" spellcheck="false" role="combobox" aria-controls="kl" aria-expanded="true" aria-label="Go to a view, area or project">
+  <ul id="kl" role="listbox"></ul>
 </dialog>
 <dialog id="ask" aria-labelledby="askt">
   <form id="askf" method="dialog">
