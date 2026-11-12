@@ -345,3 +345,6 @@ body.board #f, body.board .hint { display: none; }
 #hl li { padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 15px; }
 #hl li.on { background: var(--well); }
 #pk { margin: 0 0 8px; height: 28px; padding: 0 10px; border: 0; border-radius: 999px; font: 600 13px var(--sans); cursor: pointer; }
+li.hit { animation: hit 1.6s ease-out; }
+@keyframes hit { 0%, 40% { background: var(--accent-soft); } 100% { background: none; } }
+@media (prefers-reduced-motion: reduce) { li.hit { animation: none; } }

@@ -373,6 +373,7 @@ const ICON = { // 24px stroke icons, drawn by style.css
   week: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   x: '<path d="M6 6l12 12M18 6L6 18"/>',
   all: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  task: '<circle cx="12" cy="12" r="7.5"/>',
   board: '<rect x="3.500" y="4" width="5" height="16" rx="1.500"/><rect x="10" y="4" width="5" height="10" rx="1.500"/><rect x="16.500" y="4" width="4" height="13" rx="1.500"/>',
   chev: '<path d="M9 6l6 6-6 6"/>', // points right; .open turns it down
 };
@@ -1050,12 +1051,13 @@ function kdraw() {
   const all = [["inbox", "Inbox", "inbox"], ["today", "Today", "today"], ["upcoming", "Upcoming", "upcoming"], ["done", "Done", "done"], ["board", "Board", "board"], ["all", "Everything", "all"],
     ...meta.lists.flatMap((l) => [[l.id, l.name, "area"], ...l.subs.map((s) => [`${l.id}|${s.id}`, `${l.name} › ${s.name}`, "area"])])];
   kitems = all.map((x) => ({ x, s: kscore(x[1], q) })).filter((m) => m.s).sort((a, b) => b.s - a.s).map((m) => m.x); // sort is stable: equal scores keep sidebar order
+  if (q) kitems.push(...tasks.filter((t) => t.text.toLowerCase().includes(q)).sort((a, b) => a.done - b.done || b.u - a.u).slice(0, 8).map((t) => [`task:${t.id}`, t.text, t.done ? "done" : "task", t.done ? "Done" : placeOf(t).l?.name ?? "Inbox"])); // tasks only once you type; open ones first, newest first
   kfocus = Math.min(kfocus, Math.max(kitems.length - 1, 0));
-  kl.replaceChildren(...kitems.map(([id, name, ic], i) => {
+  kl.replaceChildren(...kitems.map(([id, name, ic, hint], i) => {
     const li = Object.assign(document.createElement("li"), { role: "option", className: i === kfocus ? "on" : "" });
     li.setAttribute("aria-selected", String(i === kfocus));
     li.append(svg(ic), Object.assign(document.createElement("span"), { textContent: name }));
-    if (id === view) li.append(Object.assign(document.createElement("em"), { textContent: "here" }));
+    if (id === view || hint) li.append(Object.assign(document.createElement("em"), { textContent: hint ?? "here" }));
     li.onpointermove = () => { if (kfocus !== i) { kfocus = i; kdraw(); } };
     li.onclick = () => kgo(id);
     return li;
@@ -1066,7 +1068,13 @@ function kdraw() {
 function kgo(id) {
   kd.close();
   document.body.classList.remove("menu");
-  setView(id);
+  const t = id.startsWith("task:") && tasks.find((x) => x.id === id.slice(5));
+  if (!t) return setView(id);
+  if (!t.done) folded.delete(`all:${areaOf(t) || "inbox"}`); // an open task: show it in Everything, with its group open
+  setView(t.done ? "done" : "all");
+  const li = list.querySelector(`li[data-id="${t.id}"]`);
+  li?.scrollIntoView({ block: "center" });
+  li?.classList.add("hit");
 }
 kq.oninput = () => { kfocus = 0; kdraw(); };
 kq.onkeydown = (e) => {

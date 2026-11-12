@@ -15,7 +15,7 @@ Type a thought, press Enter, done. Paste a URL (a PR, a doc) and it becomes a ch
 ## What it does
 
 - **Views:** Inbox, Today (with an Evening group), Upcoming, Done, a Board with one column per area, and Everything: every open task as one list, grouped by area and project, soonest first.
-- **Command bar:** press `Ctrl` + `K` (`Cmd` + `K` on Mac), or tap the search button in the header, to jump to any view, area or project. Type to filter, `↑`/`↓` to move, `Enter` to go.
+- **Command bar:** press `Ctrl` + `K` (`Cmd` + `K` on Mac), or tap the search button in the header, to jump to any view, area or project, or to find a task by its text. Type to filter, `↑`/`↓` to move, `Enter` to go.
 - **Areas, projects and headings:** group tasks into areas, split an area into projects, and add headings inside a project. Open a project from the area view. A Back button returns you after you go deep.
 - **Today marker:** a task due today (or overdue) shows a star next to its date, so you spot it in any view.
 - **Natural dates:** type "call Sam tomorrow 3pm" and the date and time are set. Time uses the 24-hour form (`15:00`). Tasks can also repeat.
