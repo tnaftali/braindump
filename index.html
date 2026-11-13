@@ -22,7 +22,7 @@
     try { t = localStorage.getItem("theme"); } catch (e) {}
     if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     r.dataset.theme = t;
-    document.querySelector('meta[name="theme-color"]').content = t === "dark" ? "#2b2f3c" : "#f1f4fa";
+    document.querySelector('meta[name="theme-color"]').content = t === "dark" ? "#242a3d" : "#f1f4fa";
   })();
 </script>
 <script type="module" src="app.js"></script>
