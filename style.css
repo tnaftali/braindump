@@ -11,10 +11,10 @@
   color-scheme: light;
 }
 :root[data-theme="dark"] {
-  --bg: #1b2240; --panel: #232b4d; --well: #151b34;
-  --border: #323b62; --border-strong: #46517d;
-  --text: #eef2ff; --muted: #aab4d4; --faint: #8f9abd;
-  --accent: #72b4ff; --accent-soft: #263a6e;
+  --bg: #252c44; --panel: #2f3754; --well: #1e243a;
+  --border: #3d4665; --border-strong: #525d82;
+  --text: #f1f3fb; --muted: #bac1d8; --faint: #a0a8c4;
+  --accent: #72b4ff; --accent-soft: #2c3c6c;
   --green: #7fd1a0; --red: #ff8f8f;
   --c-inbox: #72b4ff; --c-today: #f5c84b; --c-upcoming: #ff7b8a; --c-all: #4fd1c0; --c-board: #b9a2ff; --c-done: #7fd1a0;
   color-scheme: dark;
@@ -54,7 +54,7 @@ main { width: 100%; max-width: 680px; margin: 0 auto; padding: 0 max(20px, env(s
 
 /* sticky header keeps quick capture in reach while the list scrolls */
 .top { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: calc(20px + env(safe-area-inset-top)) 0 4px; }
-.head { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.head { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; }
 h1 { font: 700 28px var(--title); letter-spacing: -0.005em; margin: 0; flex: 1; }
 .lastsync { min-width: 0; text-align: right; font: 12px/1.3 var(--sans); color: var(--faint); font-variant-numeric: tabular-nums; }
 dialog p.sub.first { margin-top: 0; }
