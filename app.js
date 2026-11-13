@@ -1150,7 +1150,8 @@ addEventListener("keydown", (e) => {
     if (kd.open) return kd.close();
     kopen();
   }
-  const go = { Digit1: "inbox", Digit2: "today" }[e.code];
+  $("fab").onclick = () => { scrollTo({ top: 0 }); $("in").focus(); }; // inside the tap, so the phone opens the keyboard
+const go = { Digit1: "inbox", Digit2: "today" }[e.code];
   if (go && (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && !document.querySelector("dialog[open]")) { e.preventDefault(); setView(go); }
 });
 function kopen() {
