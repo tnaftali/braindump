@@ -214,6 +214,18 @@ li.sec.head .hc { padding: 6px 4px; color: var(--faint); font-size: 14px; width:
 #whend .row + .row { margin-top: 8px; }
 #whend .row { padding: 0; }
 
+/* phone: sheet fits the screen, tighter spacing, Cancel/Done stay pinned at the bottom */
+@media (max-width: 600px) {
+  #whend { max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); padding: 14px 16px 0; overscroll-behavior: contain; }
+  #whend h2 { margin-bottom: 8px; }
+  #whend #wtitle { height: 44px; }
+  #whend p.sub { margin: 12px 0 6px; }
+  #whend .row.quick button { height: 52px; gap: 4px; }
+  #whend .row input, #whend .row select, #whend select, #whend #wlist, #whend #wtclear { height: 40px; }
+  #whend textarea { min-height: 0; height: 60px; }
+  #whend .row.foot2 { position: sticky; bottom: 0; margin: 8px -16px 0; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: var(--panel); border-top: 1px solid var(--border); }
+}
+
 /* ask: our own confirm and prompt */
 #ask { width: min(380px, calc(100vw - 32px)); }
 #ask p { overflow-wrap: anywhere; }
@@ -271,7 +283,7 @@ li .ci input[type=checkbox]::before { inset: -4px; }
 
 /* phone width: a long date chip wraps beside the text instead of squeezing it to a sliver; the date and time fields fit */
 @media (max-width: 480px) {
-  .area { max-width: 28%; font-size: 12px; padding-left: 4px; }
+  .area { max-width: 40%; font-size: 12px; padding-left: 4px; white-space: normal; overflow: visible; text-overflow: clip; text-align: right; line-height: 1.25; overflow-wrap: anywhere; }
   li > .when { flex: 0 1 auto; max-width: 34%; min-height: 0; padding: 3px 6px; white-space: normal; text-align: right; line-height: 1.25; }
   #whend .row.when { gap: 6px; }
   #whend .row.when input { padding: 0 8px; font: 16px var(--sans); }

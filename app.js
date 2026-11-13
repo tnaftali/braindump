@@ -952,7 +952,7 @@ async function pullCaptures() {
   const fresh = items.filter((i) => !tasks.some((t) => t.id === i.id));
   for (const i of fresh.reverse()) {
     const s = i.text.trim(), link = /^https?:\/\/\S+$/.test(s), [first, ...rest] = s.split("\n"), n = link ? s : rest.join("\n").trim();
-    tasks.unshift({ id: i.id, text: (link ? label(s) : first).slice(0, 500), done: false, u: now(), ...(n ? { n: n.slice(0, 5000) } : {}) });
+    tasks.unshift({ id: i.id, text: (link ? label(s) : first).slice(0, 500), done: false, u: now(), date: today(), ...(n ? { n: n.slice(0, 5000) } : {}) }); // due today, so a capture shows up in Today until you file it
   }
   if (fresh.length) commit();
   await ackInbox(code, items.length);
@@ -1148,6 +1148,8 @@ addEventListener("keydown", (e) => {
     if (kd.open) return kd.close();
     kopen();
   }
+  const go = { Digit1: "inbox", Digit2: "today" }[e.code];
+  if (go && (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && !document.querySelector("dialog[open]")) { e.preventDefault(); setView(go); }
 });
 function kopen() {
   if (document.querySelector("dialog[open]")) return; // not on top of another dialog
