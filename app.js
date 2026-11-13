@@ -511,9 +511,9 @@ function hdraw() {
   hfocus = Math.min(hfocus, Math.max(hitems.length - 1, 0));
   hl.hidden = !hitems.length;
   if (hl.hidden) return;
-  const r = hostEl.getBoundingClientRect(), w = Math.min(Math.max(r.width, 220), 360), host = hostEl.closest("dialog") ?? document.body; // inside the sheet's own layer, or it would sit behind it
+  const r = hostEl.getBoundingClientRect(), w = Math.min(Math.max(r.width, 220), 360), host = hostEl.closest("dialog") ?? document.body, up = (visualViewport?.height ?? innerHeight) - r.bottom < 260 && r.top > 260; // near the bottom (phone capture bar): open upward // inside the sheet's own layer, or it would sit behind it
   if (hl.parentNode !== host) host.append(hl);
-  Object.assign(hl.style, { width: `${w}px`, left: `${Math.max(8, Math.min(r.left, innerWidth - w - 8))}px`, top: `${r.bottom + 6}px` });
+  Object.assign(hl.style, { width: `${w}px`, left: `${Math.max(8, Math.min(r.left, innerWidth - w - 8))}px`, top: `${up ? r.top - 6 : r.bottom + 6}px`, transform: up ? "translateY(-100%)" : "" });
   hl.replaceChildren(...hitems.map((p, i) => {
     const li = Object.assign(document.createElement("li"), { role: "option", className: i === hfocus ? "on" : "", textContent: p.name });
     li.onpointerdown = (e) => { e.preventDefault(); hpick(p); }; // keep the focus in the field
@@ -889,7 +889,7 @@ $("file").onchange = async (e) => {
 };
 
 // Theme: head script sets the first value from the system; this toggles and persists it.
-const THEME_BG = { light: "#f1f4fa", dark: "#2a2e3d" };
+const THEME_BG = { light: "#f1f4fa", dark: "#2b2f3c" };
 $("theme").onclick = () => {
   const r = document.documentElement, t = r.dataset.theme === "dark" ? "light" : "dark";
   r.dataset.theme = t;
