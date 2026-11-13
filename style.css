@@ -11,10 +11,10 @@
   color-scheme: light;
 }
 :root[data-theme="dark"] {
-  --bg: #252c44; --panel: #2f3754; --well: #1e243a;
-  --border: #3d4665; --border-strong: #525d82;
-  --text: #f1f3fb; --muted: #bac1d8; --faint: #a0a8c4;
-  --accent: #72b4ff; --accent-soft: #2c3c6c;
+  --bg: #2a2e3d; --panel: #343848; --well: #232634;
+  --border: #444a5e; --border-strong: #595f78;
+  --text: #f2f3f8; --muted: #bcc0d0; --faint: #a3a8bb;
+  --accent: #72b4ff; --accent-soft: #303d62;
   --green: #7fd1a0; --red: #ff8f8f;
   --c-inbox: #72b4ff; --c-today: #f5c84b; --c-upcoming: #ff7b8a; --c-all: #4fd1c0; --c-board: #b9a2ff; --c-done: #7fd1a0;
   color-scheme: dark;

@@ -889,7 +889,7 @@ $("file").onchange = async (e) => {
 };
 
 // Theme: head script sets the first value from the system; this toggles and persists it.
-const THEME_BG = { light: "#f1f4fa", dark: "#252c44" };
+const THEME_BG = { light: "#f1f4fa", dark: "#2a2e3d" };
 $("theme").onclick = () => {
   const r = document.documentElement, t = r.dataset.theme === "dark" ? "light" : "dark";
   r.dataset.theme = t;
