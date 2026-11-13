@@ -1,4 +1,4 @@
-name = "braindump-sync"
+name = "task-capture"
 main = "index.js"
 compatibility_date = "2026-01-01"
 account_id = "3371168947cb48ae7e818fd8398131ee"

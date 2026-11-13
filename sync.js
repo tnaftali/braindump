@@ -2,7 +2,7 @@
 // key. The server only ever sees an address and encrypted bytes.
 import { merge, normalize, sig } from "./logic.js";
 
-export const API = "https://braindump-sync.tobias-naftali-337.workers.dev/b/";
+export const API = "https://task-capture.tobias-naftali-337.workers.dev/b/";
 export const PUSH_API = API.replace(/b\/$/, "p/");
 export const VAPID_PUBLIC = "BM1hN6UAO61NsXgvAaIJwOVho1CCDvJ0RO9gBrfllkDNmONowgG0GYwd3chTCa9uzZAyMM2xaGd_6v7MxZKD1us"; // the Worker holds the private half (VAPID_JWK)
 const enc = new TextEncoder();
