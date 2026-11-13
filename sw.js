@@ -1,6 +1,6 @@
 // Offline cache, stale-while-revalidate: answer from cache, refresh it in the background.
 // A deploy shows up on the second launch. Bump VERSION to drop the old cache outright.
-const VERSION = "v108";
+const VERSION = "v112";
 const SHELL = [
   "./",
   "index.html",
