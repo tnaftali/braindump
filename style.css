@@ -19,7 +19,7 @@
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html { -webkit-text-size-adjust: 100%; touch-action: manipulation; overscroll-behavior-y: none; } /* no double-tap zoom, no rubber-band: acts like an app */
+html { -webkit-text-size-adjust: 100%; touch-action: manipulation; } /* no double-tap zoom; the page keeps its elastic overscroll, like a native app */
 body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; } /* app feel: no selecting UI text */
 input, [contenteditable] { -webkit-user-select: text; user-select: text; } /* but typing and editing still work */
 .iconbtn.spin { animation: spin 1s linear infinite; }
@@ -79,15 +79,10 @@ li input[type=checkbox]:hover { border-color: var(--accent); }
 li input[type=checkbox]:checked { background: var(--green); border-color: var(--green); }
 li input[type=checkbox]:checked::after { content: ""; width: 12px; height: 12px; background: var(--bg); -webkit-mask: var(--tick) center / contain no-repeat; mask: var(--tick) center / contain no-repeat; }
 .body { flex: 1; min-width: 0; }
-.t { display: block; min-width: 0; overflow-wrap: anywhere; outline: none; border-radius: 4px; cursor: text; padding-top: 1px; }
-.t:focus { background: var(--panel); box-shadow: 0 0 0 4px var(--panel); }
+.t { display: block; min-width: 0; overflow-wrap: anywhere; outline: none; border-radius: 4px; cursor: pointer; padding-top: 1px; }
 li.done .t { text-decoration: line-through; color: var(--faint); }
 .t a { color: var(--accent); text-decoration: none; background: var(--accent-soft); border-radius: 6px; padding: 0 8px; font-size: 13px; white-space: nowrap; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
 .t a:hover { text-decoration: underline; text-underline-offset: 3px; }
-.cal { flex: none; width: 24px; height: 28px; margin: -2px 0 0; padding: 0; display: grid; place-items: center; background: none; border: 0; color: var(--faint); cursor: pointer; opacity: 0; }
-.cal svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.cal:hover { color: var(--accent); }
-li:hover .cal, .cal:focus-visible { opacity: 1; }
 li:not(.future) { cursor: grab; }
 li.drag { cursor: grabbing; }
 .when { flex: none; min-height: 28px; margin: -2px 0 0; padding: 0 8px; display: inline-flex; align-items: center; background: none; border: 0; border-radius: 8px; color: var(--faint); font: 600 12px var(--sans); cursor: pointer; white-space: nowrap; }
@@ -115,7 +110,7 @@ li.sec + li { border-top: 1px solid var(--border); }
 .x { flex: none; width: 40px; height: 40px; margin: -8px -4px 0 0; opacity: 0; background: none; border: 0; color: var(--faint); font-size: 22px; line-height: 1; cursor: pointer; }
 li:hover .x, .x:focus-visible { opacity: 1; }
 .x:hover { color: var(--red); }
-@media (hover: none) { .cal, .x { opacity: 1; } }
+@media (hover: none) { .x { opacity: 1; } }
 
 li.drag { position: relative; z-index: 2; border-radius: 10px; background: var(--panel); box-shadow: 0 8px 24px rgba(0, 0, 0, .2); }
 li.over-top { box-shadow: 0 -2px 0 var(--accent); }

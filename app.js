@@ -101,14 +101,6 @@ function fill(el, text) {
   }));
 }
 
-function edit(el) {
-  el.contentEditable = "plaintext-only"; el.setAttribute("role", "textbox");
-  el.textContent = byId(el).text; // show the raw URL while editing
-  el.focus();
-  getSelection().selectAllChildren(el);
-  getSelection().collapseToEnd();
-}
-
 // Done tasks leave every view except Done, which groups them by the day they were completed.
 const inView = (t) => (view === "done" ? t.done : !t.done && (view === "all" ? true : view === "board" || view === "inbox" ? !areaOf(t) && !t.date : view === "today" ? !!t.date && t.date <= day : view === "upcoming" ? t.date > day : areaOf(t) === vArea() && (!vSub() || subOf(meta.lists.find((l) => l.id === t.l), t)?.id === vSub())));
 const byDate = (a, b) => (a.date + (a.tm ?? "")).localeCompare(b.date + (b.tm ?? "")); // by day, then by time
@@ -142,12 +134,10 @@ function row(t, td) {
   const li = document.createElement("li");
   li.className = t.done ? "done" : t.date > td ? "future" : "";
   li.dataset.id = t.id;
-  const cal = Object.assign(document.createElement("button"), { type: "button", className: "cal", title: "Set a date", innerHTML: CAL });
-  cal.setAttribute("aria-label", "Set a date");
   const cb = Object.assign(document.createElement("input"), { type: "checkbox", checked: t.done });
   cb.setAttribute("aria-label", `Done: ${t.text}`);
   const tx = Object.assign(document.createElement("span"), { className: "t", tabIndex: 0, spellcheck: false });
-  tx.setAttribute("role", "button"); tx.setAttribute("aria-description", "Press Enter to edit. Alt and arrow keys move it."); tx.setAttribute("aria-keyshortcuts", "Alt+ArrowUp Alt+ArrowDown");
+  tx.setAttribute("role", "button"); tx.setAttribute("aria-description", "Press Enter to open it. Alt and arrow keys move it."); tx.setAttribute("aria-keyshortcuts", "Alt+ArrowUp Alt+ArrowDown");
   fill(tx, t.text);
   const x = Object.assign(document.createElement("button"), { className: "x", title: "Delete" });
   x.append(svg("x")); x.setAttribute("aria-label", `Delete: ${t.text}`);
@@ -179,7 +169,7 @@ function row(t, td) {
   w.setAttribute("aria-label", "Date and repeat");
   if (t.tm && !t.done && !past) w.prepend(svg("bell"));
   if (chip && view !== "today" && t.date <= td) w.prepend(svg("today")); // a star marks what is due today (or overdue); the Today view needs none // only while the reminder is still to come; a past one keeps its date and time
-  li.append(cal, cb, body, ...(chip ? [w] : []), ...(ar ? [ar] : []), x);
+  li.append(cb, body, ...(chip ? [w] : []), ...(ar ? [ar] : []), x);
   return li;
 }
 const secRow = (text, ...kids) => {
@@ -504,7 +494,7 @@ const hl = Object.assign(document.createElement("ul"), { className: "hl", role: 
 hl.setAttribute("aria-label", "Areas and projects");
 let pick = null, hitems = [], hfocus = 0, hostEl = null;
 // The sheet's Area box is the same popup as a combobox: no "#", the whole text filters, and focusing it lists everything.
-const HASH = "#in, #wtitle, #wlist, .cadd, .t[contenteditable]";
+const HASH = "#in, #wtitle, #wlist, .cadd";
 const hfield = (e) => e.target.closest?.(HASH);
 const hval = (el) => (el.isContentEditable ? el.textContent : el.value);
 const hq = (el) => (el.id === "wlist" ? { 2: el.dataset.q ?? "" } : /(^|\s)#([^\s#]*)$/.exec(hval(el)));
@@ -541,10 +531,6 @@ function hpick(p) {
     el.value = text;
     edited((t) => { if (text) t.text = text; setPlace(t, v); });
     fillWhen(tasks.find((x) => x.id === wid));
-  } else { // a task being edited in the list: an empty result keeps the old text, or the blur would delete the task
-    const t = byId(el);
-    el.textContent = text || t.text; getSelection().selectAllChildren(el); getSelection().collapseToEnd();
-    setPlace(t, v); touch(t);
   }
   el.focus();
 }
@@ -616,29 +602,21 @@ list.addEventListener("change", (e) => {
 });
 list.addEventListener("click", async (e) => {
   if (e.target.closest("a")) return; // a link in a note opens the link, not the sheet
-  if (e.target.closest(".when, .cal, .note")) return openWhen(byId(e.target));
+  if (e.target.closest(".when, .note, .t")) return openWhen(byId(e.target)); // a tap on the text opens the sheet: titles are edited there, not in the list
   if (e.target.classList.contains("area")) return setView(byId(e.target).l, true);
   if (e.target.classList.contains("tc")) { const id = byId(e.target).id; if (!folded.delete(id)) folded.add(id); try { localStorage.setItem(FOLD, JSON.stringify([...folded])); } catch {} return render(); }
-  if (e.target.classList.contains("t") && !e.target.isContentEditable) return edit(e.target); // one click edits the text in place
   if (!e.target.classList.contains("x")) return;
   const t = byId(e.target);
   const at = tasks.indexOf(t);
   drop(t); tasks = tasks.filter((x) => x !== t); commit();
   undoable("Task deleted", () => { delete meta.tomb[t.id]; touch(t); tasks.splice(Math.min(at, tasks.length), 0, t); commit(); });
 });
-list.addEventListener("focusout", (e) => {
-  if (!e.target.classList.contains("t") || !e.target.isContentEditable) return;
-  const t = byId(e.target), text = e.target.textContent.trim();
-  if (!text) { drop(t); tasks = tasks.filter((x) => x !== t); }
-  else if (text !== t.text) { t.text = text; touch(t); }
-  commit();
-});
 // Alt+Up/Down moves the focused task or project one place: the keyboard twin of dragging.
 const nextTask = (li, up) => { for (let n = up ? li.previousElementSibling : li.nextElementSibling; n; n = up ? n.previousElementSibling : n.nextElementSibling) if (n.dataset.id) return n; };
 list.addEventListener("keydown", (e) => {
   if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
     const up = e.key === "ArrowUp", li = e.target.closest("li");
-    if (e.target.classList.contains("t") && !e.target.isContentEditable) {
+    if (e.target.classList.contains("t")) {
       e.preventDefault();
       const o = nextTask(li, up);
       if (!o) return;
@@ -655,7 +633,7 @@ list.addEventListener("keydown", (e) => {
   }
   if (e.key !== "Enter" || !e.target.classList.contains("t")) return;
   e.preventDefault();
-  if (e.target.isContentEditable) { e.target.blur(); $("in").focus(); } else edit(e.target);
+  openWhen(byId(e.target));
 });
 // Date and repeat sheet. Every change applies at once; there is no save button.
 // Cancel (and Esc) puts the task back as it was when the sheet opened; a task made by pasting a link is removed. Done, Ctrl+Enter and a click outside keep the edits.
