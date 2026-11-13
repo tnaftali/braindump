@@ -542,6 +542,7 @@ document.addEventListener("focusout", (e) => {
   hostEl = null; hdraw();
   if (el.id === "wlist") { const t = tasks.find((x) => x.id === wid); if (t) el.value = placeName(t); } // text typed but not picked is dropped
 });
+$("fab").onclick = () => { scrollTo({ top: 0 }); $("in").focus(); }; // inside the tap, so the phone opens the keyboard
 document.addEventListener("keydown", (e) => { // capture: while the popup is open it owns these keys, before the field's own Enter handler adds the task
   const el = hfield(e);
   if (hl.hidden && el?.id === "wlist" && e.key === "ArrowDown") { el.dataset.q = ""; hostEl = el; hfocus = 0; hdraw(); e.preventDefault(); return; }
@@ -1150,8 +1151,7 @@ addEventListener("keydown", (e) => {
     if (kd.open) return kd.close();
     kopen();
   }
-  $("fab").onclick = () => { scrollTo({ top: 0 }); $("in").focus(); }; // inside the tap, so the phone opens the keyboard
-const go = { Digit1: "inbox", Digit2: "today" }[e.code];
+  const go = { Digit1: "inbox", Digit2: "today" }[e.code];
   if (go && (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && !document.querySelector("dialog[open]")) { e.preventDefault(); setView(go); }
 });
 function kopen() {
