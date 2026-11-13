@@ -1,20 +1,22 @@
 :root {
-  --bg: #e6e0d2; --panel: #ede8dc; --well: #ddd6c6;
-  --border: #d4ccba; --border-strong: #bfb6a2;
-  --text: #2b2925; --muted: #57534b; --faint: #625d54;
-  --accent: #a34c31; --accent-soft: #e8d5c8;
-  --green: #4f6d43; --red: #9c3d33;
+  --bg: #f1f4fa; --panel: #ffffff; --well: #e6ebf5;
+  --border: #dbe2ef; --border-strong: #c3cde0;
+  --text: #1b2540; --muted: #4a5470; --faint: #5b6580;
+  --accent: #2f68e0; --accent-soft: #dbe8ff;
+  --green: #2f8a5b; --red: #c24a4a;
   --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
   --title: system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: ui-monospace, "JetBrains Mono", monospace;
+  --c-inbox: #3f78ee; --c-today: #e3a008; --c-upcoming: #e04860; --c-all: #1f9d8f; --c-board: #9a7cf0; --c-done: #2f9e5f;
   color-scheme: light;
 }
 :root[data-theme="dark"] {
-  --bg: #262624; --panel: #2f2f2c; --well: #1f1e1d;
-  --border: #3a3936; --border-strong: #4a4945;
-  --text: #f5f4ed; --muted: #b7b5a9; --faint: #9a988e;
-  --accent: #d97757; --accent-soft: #3d2c25;
-  --green: #9bb98a; --red: #e08a7d;
+  --bg: #1b2240; --panel: #232b4d; --well: #151b34;
+  --border: #323b62; --border-strong: #46517d;
+  --text: #eef2ff; --muted: #aab4d4; --faint: #8f9abd;
+  --accent: #72b4ff; --accent-soft: #263a6e;
+  --green: #7fd1a0; --red: #ff8f8f;
+  --c-inbox: #72b4ff; --c-today: #f5c84b; --c-upcoming: #ff7b8a; --c-all: #4fd1c0; --c-board: #b9a2ff; --c-done: #7fd1a0;
   color-scheme: dark;
 }
 
@@ -326,7 +328,7 @@ body.board #f, body.board .hint { display: none; }
 #list.board li.sec { border: 0; }
 .brand { display: flex; align-items: center; gap: 8px; }
 .brand img { border-radius: 6px; }
-#vt { min-width: 0; margin-right: auto; display: flex; align-items: center; gap: 12px; }
+#vt { min-width: 0; margin-right: auto; display: flex; align-items: center; gap: 8px; }
 #vt svg { width: 26px; height: 26px; flex: none; fill: none; stroke: var(--muted); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .iconbtn[hidden] { display: none; }
 
@@ -345,7 +347,7 @@ body.board #f, body.board .hint { display: none; }
   .head { gap: 6px; }
   .head .iconbtn { width: 36px; height: 36px; }
   #vt { font-size: 24px; white-space: nowrap; }
-  #vt svg { display: none; }
+  #vt svg { width: 27px; height: 27px; }
 }
 
 /* "#" area picker under the new-task box */
@@ -363,3 +365,17 @@ dialog select, #wlist { appearance: none; -webkit-appearance: none; padding-righ
 li.hit { animation: hit 1.6s ease-out; }
 @keyframes hit { 0%, 40% { background: var(--accent-soft); } 100% { background: none; } }
 @media (prefers-reduced-motion: reduce) { li.hit { animation: none; } }
+
+/* view icons: filled in their own color, in the sidebar and the title; .cut parts are cut out in the surface color */
+.nav svg[data-k], #vt svg[data-k] { --cut: var(--panel); }
+#vt svg[data-k] { --cut: var(--bg); }
+:is(.nav, #vt) svg:is([data-k=inbox], [data-k=today], [data-k=upcoming], [data-k=all], [data-k=board]) { fill: var(--ic); stroke: var(--ic); }
+:is(.nav, #vt) svg[data-k=done] { stroke: var(--ic); stroke-width: 2.5; }
+:is(.nav, #vt) svg[data-k=board] { stroke-width: 1; }
+:is(.nav, #vt) svg[data-k=inbox] { --ic: var(--c-inbox); }
+:is(.nav, #vt) svg[data-k=today] { --ic: var(--c-today); }
+:is(.nav, #vt) svg[data-k=upcoming] { --ic: var(--c-upcoming); }
+:is(.nav, #vt) svg[data-k=all] { --ic: var(--c-all); }
+:is(.nav, #vt) svg[data-k=board] { --ic: var(--c-board); }
+:is(.nav, #vt) svg[data-k=done] { --ic: var(--c-done); }
+:is(.nav, #vt) svg .cut { fill: none; stroke: var(--cut); }

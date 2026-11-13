@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Tasks</title>
 <meta name="description" content="Quick-capture task list with areas, projects, natural-language dates and a Ctrl+K command bar. Offline, private, no account. Optional encrypted sync and reminders.">
-<meta name="theme-color" content="#e6e0d2">
+<meta name="theme-color" content="#f1f4fa">
 <meta name="color-scheme" content="light dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -22,7 +22,7 @@
     try { t = localStorage.getItem("theme"); } catch (e) {}
     if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     r.dataset.theme = t;
-    document.querySelector('meta[name="theme-color"]').content = t === "dark" ? "#262624" : "#e6e0d2";
+    document.querySelector('meta[name="theme-color"]').content = t === "dark" ? "#1b2240" : "#f1f4fa";
   })();
 </script>
 <script type="module" src="app.js"></script>

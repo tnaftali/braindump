@@ -354,24 +354,24 @@ async function deleteItem(item, isSub) {
 }
 
 const ICON = { // 24px stroke icons, drawn by style.css
-  inbox: '<path d="M4 13l2.5-7h11L20 13v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M4 13h5l1 2h4l1-2h5"/>',
+  inbox: '<path d="M4 13l2.5-7h11L20 13v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path class="cut" d="M4 13h5l1 2h4l1-2h5"/>',
   today: '<path d="M12 3.5l2.6 5.3 5.9.9-4.250 4.100 1 5.800L12 16.800 6.750 19.600l1-5.800L3.500 9.700l5.900-.9z"/>',
-  upcoming: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
+  upcoming: '<rect x="4" y="5" width="16" height="15" rx="2"/><path class="cut" d="M4 10h16"/><path d="M9 3v4M15 3v4"/>',
   area: '<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',
   add: '<path d="M12 5v14M5 12h14"/>',
-  done: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  done: '<path d="M5 12.500l4.500 4.500L19 7.500"/>',
   bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.500 2h-15z"/><path d="M10 20.500a2 2 0 0 0 4 0"/>',
   evening: '<path d="M20.5 14.500A9 9 0 1 1 9.500 3.500a9.200 9.200 0 0 0 11 11z"/>',
   tomorrow: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6L7 7M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>',
   week: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   x: '<path d="M6 6l12 12M18 6L6 18"/>',
-  all: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  all: '<rect x="4" y="10" width="16" height="10" rx="2.500"/><path d="M7 5.500h10"/>',
   task: '<circle cx="12" cy="12" r="7.5"/>',
-  board: '<rect x="3.500" y="4" width="5" height="16" rx="1.500"/><rect x="10" y="4" width="5" height="10" rx="1.500"/><rect x="16.500" y="4" width="4" height="13" rx="1.500"/>',
+  board: '<rect x="4" y="4" width="4" height="15" rx="1"/><rect x="10" y="4" width="4" height="9" rx="1"/><rect x="16" y="4" width="4" height="12" rx="1"/>',
   chev: '<path d="M9 6l6 6-6 6"/>', // points right; .open turns it down
 };
 const icon = (k) => Object.assign(document.createElementNS("http://www.w3.org/2000/svg", "svg"), { innerHTML: ICON[k] }); // set below with attributes
-const svg = (k) => { const s = icon(k); s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("aria-hidden", "true"); return s; };
+const svg = (k) => { const s = icon(k); s.dataset.k = k; s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("aria-hidden", "true"); return s; };
 
 function renderTabs(counts) {
   const item = (id, name, ic, onclick = () => setView(id)) => {
@@ -385,7 +385,7 @@ function renderTabs(counts) {
   };
   const gap = () => Object.assign(document.createElement("div"), { className: "gap" });
   $("tabs").replaceChildren(
-    item("inbox", "Inbox", "inbox"), item("today", "Today", "today"), item("upcoming", "Upcoming", "upcoming"), item("all", "Everything", "all"), item("board", "Board", "board"), item("done", "Done", "done"), gap(),
+    item("inbox", "Inbox", "inbox"), item("today", "Today", "today"), item("upcoming", "Upcoming", "upcoming"), item("all", "Anytime", "all"), item("board", "Board", "board"), item("done", "Done", "done"), gap(),
     ...meta.lists.map((l) => { // an area with its subareas under it; the caret hides them
       const g = Object.assign(document.createElement("div"), { className: "ngrp" }), shut = navShut.has(l.id);
       g.dataset.lid = l.id;
@@ -401,7 +401,7 @@ function renderTabs(counts) {
     }), ...(meta.lists.length ? [gap()] : []),
     Object.assign(item("", "New area", "add", newArea), { className: "nav new" }),
   );
-  $("vt").replaceChildren(...(ICON[view] && isArea() === false ? [svg(view)] : []), { inbox: "Inbox", today: "Today", upcoming: "Upcoming", done: "Done", board: "Board", all: "Everything" }[view] ?? (vSub() ? cur()?.subs.find((s) => s.id === vSub())?.name : cur()?.name) ?? "");
+  $("vt").replaceChildren(...(ICON[view] && isArea() === false ? [svg(view)] : []), { inbox: "Inbox", today: "Today", upcoming: "Upcoming", done: "Done", board: "Board", all: "Anytime" }[view] ?? (vSub() ? cur()?.subs.find((s) => s.id === vSub())?.name : cur()?.name) ?? "");
 }
 // Drag an area up or down in the sidebar. Touch: hold 300 ms first, so a plain swipe still scrolls.
 let swallow = false;
@@ -889,7 +889,7 @@ $("file").onchange = async (e) => {
 };
 
 // Theme: head script sets the first value from the system; this toggles and persists it.
-const THEME_BG = { light: "#e6e0d2", dark: "#262624" };
+const THEME_BG = { light: "#f1f4fa", dark: "#1b2240" };
 $("theme").onclick = () => {
   const r = document.documentElement, t = r.dataset.theme === "dark" ? "light" : "dark";
   r.dataset.theme = t;
@@ -1108,7 +1108,7 @@ const kscore = (name, q) => { // 0 = no match; a prefix beats a word start, whic
 };
 function kdraw() {
   const q = kq.value.trim().toLowerCase();
-  const all = [["inbox", "Inbox", "inbox"], ["today", "Today", "today"], ["upcoming", "Upcoming", "upcoming"], ["all", "Everything", "all"], ["board", "Board", "board"], ["done", "Done", "done"],
+  const all = [["inbox", "Inbox", "inbox"], ["today", "Today", "today"], ["upcoming", "Upcoming", "upcoming"], ["all", "Anytime", "all"], ["board", "Board", "board"], ["done", "Done", "done"],
     ...meta.lists.flatMap((l) => [[l.id, l.name, "area"], ...l.subs.map((s) => [`${l.id}|${s.id}`, `${l.name} › ${s.name}`, "area"])])];
   kitems = all.map((x) => ({ x, s: kscore(x[1], q) })).filter((m) => m.s).sort((a, b) => b.s - a.s).map((m) => m.x); // sort is stable: equal scores keep sidebar order
   if (q) kitems.push(...tasks.filter((t) => t.text.toLowerCase().includes(q)).sort((a, b) => a.done - b.done || b.u - a.u).slice(0, 8).map((t) => [`task:${t.id}`, t.text, t.done ? "done" : "task", t.done ? "Done" : placeOf(t).l?.name ?? "Inbox"])); // tasks only once you type; open ones first, newest first
