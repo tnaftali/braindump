@@ -30,7 +30,26 @@ export async function derive(code) {
   if (!globalThis.crypto?.subtle) throw new Error("encryption needs HTTPS or localhost");
   const hex = async (s) => [...(await sha(s))].map((b) => b.toString(16).padStart(2, "0")).join("");
   const raw = await sha("key:" + code), key = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
-  return { id: await hex("id:" + code), wk: await hex("w:" + code), key, raw };
+  return { id: await hex("id:" + code), wk: await hex("w:" + code), ck: await hex("c:" + code), key, raw };
+}
+
+// Quick capture: the Worker keeps an inbox. A Shortcut, bookmarklet or curl POSTs text to the capture URL (its own key, which cannot read or write the tasks); the app pulls the inbox on sync.
+export const INBOX_API = API.replace(/b\/$/, "i/");
+export async function captureUrl(code) {
+  const { id, wk, ck } = await derive(code);
+  const res = await fetch(INBOX_API + id, { method: "PUT", headers: { "X-Write-Key": wk }, body: ck });
+  if (res.status !== 204) throw new Error(`capture ${res.status}`);
+  return `${INBOX_API}${id}?k=${ck}`;
+}
+export async function pullInbox(code) { // [{ id, text }]
+  const { id, wk } = await derive(code);
+  const res = await fetch(INBOX_API + id, { headers: { "X-Write-Key": wk }, cache: "no-store" });
+  if (res.status !== 200) throw new Error(`inbox ${res.status}`);
+  return res.json();
+}
+export async function ackInbox(code, n) {
+  const { id, wk } = await derive(code);
+  await fetch(`${INBOX_API}${id}?n=${n}`, { method: "DELETE", headers: { "X-Write-Key": wk } });
 }
 
 export async function encrypt(key, obj) {

@@ -1,6 +1,6 @@
-import { addDays, linkify, merge, move, newId, nextDate, nextMonday, normalize, parseBackup, parseLists, sig, today, whenLabel } from "./logic.js";
+import { addDays, label, linkify, merge, move, newId, nextDate, nextMonday, normalize, parseBackup, parseLists, sig, today, whenLabel } from "./logic.js";
 import { parseWhen } from "./nl.js";
-import { VAPID_PUBLIC, derive, newCode, parseCode, putReminders, sync } from "./sync.js";
+import { VAPID_PUBLIC, ackInbox, captureUrl, derive, newCode, parseCode, pullInbox, putReminders, sync } from "./sync.js";
 
 const KEY = "braindump.tasks";
 const META = "braindump.meta"; // { tomb, ou, lists }: deleted ids, last reorder time and the named lists, all needed to merge
@@ -133,6 +133,7 @@ function placeSelect(sel, t, none) {
   sel.value = l ? [l.id, sa?.id ?? ""].join("|").replace(/\|+$/, "") : ""; // headings are not listed: drag a task onto one
   if (sa) sel.selectedOptions[0].textContent = `${l.name} › ${sa.name}`; // closed, it names the whole path
 }
+const placeName = (t) => { const { l, sa } = placeOf(t); return l ? (sa ? `${l.name} › ${sa.name}` : l.name) : ""; }; // headings are not named: drag a task onto one
 const setPlace = (t, v) => {
   const [l, sa] = v.split("|"), h = sa && sa === t.s ? t.h : ""; // a task keeps its heading while it stays in the same subarea
   for (const [k, x] of [["l", l], ["s", sa], ["h", h]]) if (x) t[k] = x; else delete t[k];
@@ -165,9 +166,10 @@ function row(t, td) {
     ci.append(box, Object.assign(document.createElement("span"), { textContent: c.text }));
     body.append(ci);
   }
-  if (!isArea() && view !== "board" && view !== "all" && areaOf(t)) { // the area (and subarea) sits under the text; a tap opens that area, the details sheet re-files the task
+  let ar = null; // the area (and subarea) sits at the top right of the row; a tap opens that area, the details sheet re-files the task
+  if (!isArea() && view !== "board" && view !== "all" && areaOf(t)) {
     const { l, sa } = placeOf(t);
-    body.append(Object.assign(document.createElement("button"), { type: "button", className: "area", title: "Open this area", textContent: sa ? `${l.name} › ${sa.name}` : l.name }));
+    ar = Object.assign(document.createElement("button"), { type: "button", className: "area", title: "Open this area", textContent: sa ? `${l.name} › ${sa.name}` : l.name });
   }
   const past = !!t.tm && new Date(`${t.date}T${t.tm}`) <= new Date(); // a passed time is hidden; the task keeps it
   const shown = past ? { ...t, tm: undefined } : t;
@@ -177,7 +179,7 @@ function row(t, td) {
   w.setAttribute("aria-label", "Date and repeat");
   if (t.tm && !t.done && !past) w.prepend(svg("bell"));
   if (chip && view !== "today" && t.date <= td) w.prepend(svg("today")); // a star marks what is due today (or overdue); the Today view needs none // only while the reminder is still to come; a past one keeps its date and time
-  li.append(cal, cb, body, ...(chip ? [w] : []), x);
+  li.append(cal, cb, body, ...(chip ? [w] : []), ...(ar ? [ar] : []), x);
   return li;
 }
 const secRow = (text, ...kids) => {
@@ -199,7 +201,8 @@ function renderBoard(mine, td) {
       const typed = add.value.trim();
       if (e.key !== "Enter" || !typed) return;
       const { text, ...when } = parseWhen(typed);
-      tasks.unshift({ id: newId(), text, done: false, u: now(), ...(l ? { l: l.id } : {}), ...when }); // the column decides where a new task lands
+      const place = add.pick ? { l: add.pick.l, ...(add.pick.s ? { s: add.pick.s } : {}) } : l ? { l: l.id } : {}; // the column decides where a new task lands; "#" overrides it
+      tasks.unshift({ id: newId(), text, done: false, u: now(), ...place, ...when });
       commit();
       list.querySelector(`[data-col="${id}"] .cadd`)?.focus();
     };
@@ -392,7 +395,7 @@ function renderTabs(counts) {
   };
   const gap = () => Object.assign(document.createElement("div"), { className: "gap" });
   $("tabs").replaceChildren(
-    item("inbox", "Inbox", "inbox"), item("today", "Today", "today"), item("upcoming", "Upcoming", "upcoming"), item("done", "Done", "done"), item("board", "Board", "board"), item("all", "Everything", "all"), gap(),
+    item("inbox", "Inbox", "inbox"), item("today", "Today", "today"), item("upcoming", "Upcoming", "upcoming"), item("all", "Everything", "all"), item("board", "Board", "board"), item("done", "Done", "done"), gap(),
     ...meta.lists.map((l) => { // an area with its subareas under it; the caret hides them
       const g = Object.assign(document.createElement("div"), { className: "ngrp" }), shut = navShut.has(l.id);
       g.dataset.lid = l.id;
@@ -493,44 +496,97 @@ $("ldel").onclick = async () => {
   setView("today"); commit();
 };
 
-// "#" in the new-task box picks an area or project: type #, filter, Enter or Tab to choose. The choice shows as a chip until the task is added.
-const hl = $("hl"), pk = $("pk"), nin = $("in");
-let pick = null, hitems = [], hfocus = 0;
-const hq = () => /(^|\s)#([^\s#]*)$/.exec(nin.value);
+// "#" in any task text field picks an area or project: type #, filter, Enter or Tab to choose.
+// New-task fields (the main box, a board column) show the choice as a chip until the task is added; a field that edits a task (in the list, in the sheet) moves that task at once.
+// shortcut: the "#" word must be the last one in the field, upgrade if you want it mid-text.
+const pk = $("pk"), nin = $("in");
+const hl = Object.assign(document.createElement("ul"), { className: "hl", role: "listbox", hidden: true }); // one popup, moved under whichever field is active
+hl.setAttribute("aria-label", "Areas and projects");
+let pick = null, hitems = [], hfocus = 0, hostEl = null;
+// The sheet's Area box is the same popup as a combobox: no "#", the whole text filters, and focusing it lists everything.
+const HASH = "#in, #wtitle, #wlist, .cadd, .t[contenteditable]";
+const hfield = (e) => e.target.closest?.(HASH);
+const hval = (el) => (el.isContentEditable ? el.textContent : el.value);
+const hq = (el) => (el.id === "wlist" ? { 2: el.dataset.q ?? "" } : /(^|\s)#([^\s#]*)$/.exec(hval(el)));
 function setPick(p) { pick = p; pk.hidden = !p; if (p) pk.textContent = `${p.name} ×`; }
+function colPick(add, p) { // the chip under a board column's box
+  add.pick = p;
+  if (add.nextElementSibling?.classList.contains("pkc")) add.nextElementSibling.remove();
+  if (p) add.after(Object.assign(document.createElement("button"), { type: "button", className: "chip pkc", title: "Clear", textContent: `${p.name} ×`, onclick: () => { colPick(add, null); add.focus(); } }));
+}
 function hdraw() {
-  const m = hq(), q = m?.[2].toLowerCase() ?? "";
-  hitems = !m ? [] : meta.lists.flatMap((l) => [{ l: l.id, name: l.name }, ...l.subs.map((s) => ({ l: l.id, s: s.id, name: `${l.name} › ${s.name}` }))])
+  const m = hostEl && hq(hostEl), q = m?.[2].toLowerCase() ?? "";
+  hitems = !m ? [] : [...(hostEl.id === "wlist" ? [{ l: "", name: "No area" }] : []), ...meta.lists.flatMap((l) => [{ l: l.id, name: l.name }, ...l.subs.map((s) => ({ l: l.id, s: s.id, name: `${l.name} › ${s.name}` }))])]
     .map((p) => ({ p, s: kscore(p.name, q) })).filter((x) => x.s).sort((a, b) => b.s - a.s).map((x) => x.p);
   hfocus = Math.min(hfocus, Math.max(hitems.length - 1, 0));
   hl.hidden = !hitems.length;
+  if (hl.hidden) return;
+  const r = hostEl.getBoundingClientRect(), w = Math.min(Math.max(r.width, 220), 360), host = hostEl.closest("dialog") ?? document.body; // inside the sheet's own layer, or it would sit behind it
+  if (hl.parentNode !== host) host.append(hl);
+  Object.assign(hl.style, { width: `${w}px`, left: `${Math.max(8, Math.min(r.left, innerWidth - w - 8))}px`, top: `${r.bottom + 6}px` });
   hl.replaceChildren(...hitems.map((p, i) => {
     const li = Object.assign(document.createElement("li"), { role: "option", className: i === hfocus ? "on" : "", textContent: p.name });
-    li.onpointerdown = (e) => { e.preventDefault(); hpick(p); }; // keep the focus in the box
+    li.onpointerdown = (e) => { e.preventDefault(); hpick(p); }; // keep the focus in the field
     return li;
   }));
 }
 function hpick(p) {
-  nin.value = nin.value.replace(/(^|\s)#[^\s#]*$/, "$1").trimEnd();
-  setPick(p); hdraw(); nin.focus();
+  const el = hostEl, was = hval(el), text = was.replace(/(^|\s)#[^\s#]*$/, "$1").trimEnd();
+  hostEl = null; hdraw();
+  const v = p.s ? `${p.l}|${p.s}` : p.l;
+  if (el.id === "wlist") { edited((t) => setPlace(t, v)); fillWhen(tasks.find((x) => x.id === wid)); }
+  else if (el === nin) { nin.value = text; setPick(p); }
+  else if (el.classList.contains("cadd")) { el.value = text; colPick(el, p); }
+  else if (el.id === "wtitle") { // the sheet saves as you type, so the half-typed "#wo" is in the task now: store the clean title with the new place
+    el.value = text;
+    edited((t) => { if (text) t.text = text; setPlace(t, v); });
+    fillWhen(tasks.find((x) => x.id === wid));
+  } else { // a task being edited in the list: an empty result keeps the old text, or the blur would delete the task
+    const t = byId(el);
+    el.textContent = text || t.text; getSelection().selectAllChildren(el); getSelection().collapseToEnd();
+    setPlace(t, v); touch(t);
+  }
+  el.focus();
 }
-nin.addEventListener("input", () => { hfocus = 0; hdraw(); });
-nin.addEventListener("blur", () => { hl.hidden = true; });
-nin.addEventListener("keydown", (e) => {
-  if (hl.hidden) return;
-  if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); hfocus = (hfocus + (e.key === "ArrowDown" ? 1 : -1) + hitems.length) % hitems.length; hdraw(); }
-  else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); hpick(hitems[hfocus]); }
-  else if (e.key === "Escape") hl.hidden = true;
+document.addEventListener("input", (e) => { const el = hfield(e); if (el) { hostEl = el; hfocus = 0; if (el.id === "wlist") el.dataset.q = el.value.trim(); hdraw(); } });
+document.addEventListener("focusin", (e) => { const el = hfield(e); if (el?.id === "wlist") { el.dataset.q = ""; el.select(); hostEl = el; hfocus = 0; hdraw(); } });
+document.addEventListener("focusout", (e) => {
+  const el = hfield(e);
+  if (!el) return;
+  hostEl = null; hdraw();
+  if (el.id === "wlist") { const t = tasks.find((x) => x.id === wid); if (t) el.value = placeName(t); } // text typed but not picked is dropped
 });
+document.addEventListener("keydown", (e) => { // capture: while the popup is open it owns these keys, before the field's own Enter handler adds the task
+  const el = hfield(e);
+  if (hl.hidden && el?.id === "wlist" && e.key === "ArrowDown") { el.dataset.q = ""; hostEl = el; hfocus = 0; hdraw(); e.preventDefault(); return; }
+  if (hl.hidden || el !== hostEl || e.ctrlKey || e.metaKey) return; // Ctrl+Enter is the sheet's Done
+  const k = e.key;
+  if (k === "ArrowDown" || k === "ArrowUp") hfocus = (hfocus + (k === "ArrowDown" ? 1 : -1) + hitems.length) % hitems.length, hdraw();
+  else if (k === "Enter" || k === "Tab") hpick(hitems[hfocus]);
+  else if (k === "Escape") { hostEl = null; hdraw(); }
+  else return;
+  e.preventDefault(); e.stopPropagation();
+}, true);
 pk.onclick = () => { setPick(null); nin.focus(); };
+const newPlace = () => (view === "today" ? { date: today() } : view === "upcoming" ? { date: addDays(today(), 1) } : isArea() ? { l: vArea(), ...(vSub() ? { s: vSub() } : {}) } : {});
+// Paste a link anywhere outside a text field: a new task with the link in its notes, and its sheet opens on the title.
+addEventListener("paste", (e) => {
+  if (e.target.closest?.("input, textarea, [contenteditable]") || document.querySelector("dialog[open]")) return;
+  const url = (e.clipboardData?.getData("text") ?? "").trim();
+  if (!/^https?:\/\/\S+$/.test(url)) return;
+  e.preventDefault();
+  const t = { id: newId(), text: label(url), done: false, u: now(), n: url.slice(0, 5000), ...newPlace() }; // the label stays as the title until you type one: a task is never saved untitled
+  tasks.unshift(t); commit(); openWhen(t, true);
+  $("wtitle").value = ""; $("wtitle").focus();
+});
 $("f").onsubmit = (e) => {
   e.preventDefault();
   const typed = $("in").value.trim();
   if (!typed) return;
   const { text, ...when } = parseWhen(typed); // "call Sam tomorrow 3pm" sets the date and time
-  const place = view === "today" ? { date: today() } : view === "upcoming" ? { date: addDays(today(), 1) } : isArea() ? { l: vArea(), ...(vSub() ? { s: vSub() } : {}) } : {};
+  const place = newPlace();
   if (pick) { delete place.l; delete place.s; Object.assign(place, { l: pick.l }, pick.s ? { s: pick.s } : {}); } // "#work" beats the tab on screen
-  setPick(null); hdraw();
+  setPick(null);
   tasks.unshift({ id: newId(), text, done: false, u: now(), ...place, ...when }); // the tab on screen decides where a new task lands
   $("in").value = "";
   commit();
@@ -602,9 +658,10 @@ list.addEventListener("keydown", (e) => {
   if (e.target.isContentEditable) { e.target.blur(); $("in").focus(); } else edit(e.target);
 });
 // Date and repeat sheet. Every change applies at once; there is no save button.
-let wid = null;
+// Cancel (and Esc) puts the task back as it was when the sheet opened; a task made by pasting a link is removed. Done, Ctrl+Enter and a click outside keep the edits.
+let wid = null, wsnap = null, wnew = false, wdiscard = false;
 const wd = $("whend");
-function openWhen(t) { wid = t.id; $("wtitle").value = t.text; fillWhen(t); $("wnote").value = t.n ?? ""; fillChecks(t); wd.showModal(); }
+function openWhen(t, isNew) { wid = t.id; wsnap = structuredClone(t); wnew = !!isNew; $("wtitle").value = t.text; fillWhen(t); $("wnote").value = t.n ?? ""; fillChecks(t); wd.showModal(); }
 function fillWhen(t) {
   $("wdate").value = t.date ?? "";
   $("wtime").value = t.tm ?? "";
@@ -612,9 +669,9 @@ function fillWhen(t) {
   $("rn").value = t.rep?.n ?? 1;
   $("rmode").value = t.rep?.mode ?? "schedule";
   $("wlistrow").hidden = !meta.lists.length;
-  placeSelect($("wlist"), t, "No area");
+  $("wlist").value = placeName(t);
   const td = today(); // the shortcut that matches the task's date shows as pressed
-  const on = { today: t.date === td && !t.ev, evening: t.date === td && !!t.ev, tomorrow: t.date === addDays(td, 1), monday: t.date === nextMonday(td) };
+  const on = { today: t.date === td && !t.ev, evening: t.date === td && !!t.ev, tomorrow: t.date === addDays(td, 1), monday: t.date === nextMonday(td), clear: !t.date };
   wd.querySelectorAll("[data-d]").forEach((b) => b.setAttribute("aria-pressed", String(on[b.dataset.d])));
   wd.toggleAttribute("data-never", !t.rep);
   $("rhelp").textContent = t.rep ? (t.rep.mode === "after" ? "The next date counts from the day you complete it." : "Keeps its rhythm. Missed dates are skipped, not stacked.") : "";
@@ -631,11 +688,12 @@ function applyWhen(date = $("wdate").value, ev) {
   if (date && unit) t.rep = { n, unit, mode: $("rmode").value }; else delete t.rep;
   touch(t); commit(); fillWhen(t);
 }
-const WICON = { today: "today", evening: "evening", tomorrow: "tomorrow", monday: "week" };
+const WICON = { today: "today", evening: "evening", tomorrow: "tomorrow", monday: "week", clear: "x" };
 wd.querySelectorAll("[data-d]").forEach((b) => {
   b.prepend(svg(WICON[b.dataset.d]));
   b.onclick = () => {
     const k = b.dataset.d;
+    if (k === "clear") { $("runit").value = ""; $("wtime").value = ""; return applyWhen(""); } // no date also drops the time and the repeat
     applyWhen({ today: today(), evening: today(), tomorrow: addDays(today(), 1), monday: nextMonday(today()) }[k], k === "evening" ? true : k === "today" ? false : undefined); // "Today" clears the evening flag, "Evening" sets it, the others keep it
   };
 });
@@ -645,12 +703,6 @@ $("wtime").onchange = () => {
   const s = $("wtime").value.trim(), m = s.match(/^(\d{1,2})(?::?(\d{2}))?$/);
   $("wtime").value = !s ? "" : m && +m[1] < 24 && +(m[2] ?? 0) < 60 ? `${m[1].padStart(2, "0")}:${m[2] ?? "00"}` : tasks.find((x) => x.id === wid)?.tm ?? "";
   applyWhen();
-};
-$("wlist").onchange = () => {
-  const t = tasks.find((x) => x.id === wid);
-  if (!t) return;
-  setPlace(t, $("wlist").value);
-  touch(t); commit(); fillWhen(t);
 };
 $("wtitle").oninput = () => { const v = $("wtitle").value.trim(); if (v) edited((t) => { t.text = v; }); }; // an empty title is not saved: the task keeps its old one
 // Notes and checklist. Edits save as you type; there is no save button.
@@ -682,9 +734,18 @@ $("wchk").oninput = (e) => { if (e.target.type === "text" && e.target.value.trim
 $("wchk").onclick = (e) => { if (e.target.classList.contains("cx")) fillChecks(edited((t) => rmItem(t, itemId(e)))); };
 $("sadd").onclick = addSub;
 $("hadd").onclick = () => { const sa = cur()?.subs.find((s) => s.id === vSub()); if (sa) addHead(sa); };
-$("wclear").onclick = () => { $("runit").value = ""; $("wtime").value = ""; applyWhen(""); };
 $("wtclear").onclick = () => { $("wtime").value = ""; applyWhen(); };
 $("wclose").onclick = () => wd.close();
+$("wcancel").onclick = () => { wdiscard = true; wd.close(); };
+wd.addEventListener("cancel", () => { wdiscard = true; }); // Esc
+wd.addEventListener("close", () => {
+  if (wdiscard) {
+    const i = tasks.findIndex((x) => x.id === wid);
+    if (i >= 0) { if (wnew) { drop(tasks[i]); tasks.splice(i, 1); } else { tasks[i] = wsnap; touch(wsnap); } commit(); }
+  }
+  wdiscard = wnew = false;
+});
+wd.addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); wd.close(); } });
 // A click outside a sheet closes it. Edits already apply as you make them, so there is nothing to discard.
 for (const d of document.querySelectorAll("dialog")) d.addEventListener("click", (e) => {
   const r = d.getBoundingClientRect();
@@ -898,11 +959,30 @@ async function runSync() {
     const m = merge(side(), out); // folds in edits made while the request ran
     if (sig(m) !== sig(side())) { tasks = m.tasks; meta = { tomb: m.tomb, ou: m.ou, lists: m.lists }; save(); render(); }
     setStatus("ok");
+    await pullCaptures().catch((e) => console.error("inbox failed", e)); // never fails the sync
   } catch (e) { console.error("sync failed", e); setStatus("error", e?.message ?? String(e)); } finally {
     running = false;
     if (code && sig(side()) !== start) queue(500);
   }
 }
+
+// Quick capture: text posted to the Worker inbox becomes an Inbox task. A bare link is the notes, titled by its host; other text is the title, extra lines the notes.
+// The item id is the task id, so a pull that is not acknowledged (offline) adds nothing twice.
+async function pullCaptures() {
+  const items = await pullInbox(code);
+  if (!items.length) return;
+  const fresh = items.filter((i) => !tasks.some((t) => t.id === i.id));
+  for (const i of fresh.reverse()) {
+    const s = i.text.trim(), link = /^https?:\/\/\S+$/.test(s), [first, ...rest] = s.split("\n"), n = link ? s : rest.join("\n").trim();
+    tasks.unshift({ id: i.id, text: (link ? label(s) : first).slice(0, 500), done: false, u: now(), ...(n ? { n: n.slice(0, 5000) } : {}) });
+  }
+  if (fresh.length) commit();
+  await ackInbox(code, items.length);
+}
+$("capc").onclick = async (e) => {
+  try { $("capv").value = await captureUrl(code); $("capv").hidden = false; $("capv").select(); copy($("capv").value, e.target); }
+  catch (err) { $("st").textContent = `Capture URL failed: ${err.message}`; }
+};
 
 function setCode(c) {
   if (remOn && c !== code) disableReminders(code); // reminders belong to one sync code
@@ -1048,7 +1128,7 @@ const kscore = (name, q) => { // 0 = no match; a prefix beats a word start, whic
 };
 function kdraw() {
   const q = kq.value.trim().toLowerCase();
-  const all = [["inbox", "Inbox", "inbox"], ["today", "Today", "today"], ["upcoming", "Upcoming", "upcoming"], ["done", "Done", "done"], ["board", "Board", "board"], ["all", "Everything", "all"],
+  const all = [["inbox", "Inbox", "inbox"], ["today", "Today", "today"], ["upcoming", "Upcoming", "upcoming"], ["all", "Everything", "all"], ["board", "Board", "board"], ["done", "Done", "done"],
     ...meta.lists.flatMap((l) => [[l.id, l.name, "area"], ...l.subs.map((s) => [`${l.id}|${s.id}`, `${l.name} › ${s.name}`, "area"])])];
   kitems = all.map((x) => ({ x, s: kscore(x[1], q) })).filter((m) => m.s).sort((a, b) => b.s - a.s).map((m) => m.x); // sort is stable: equal scores keep sidebar order
   if (q) kitems.push(...tasks.filter((t) => t.text.toLowerCase().includes(q)).sort((a, b) => a.done - b.done || b.u - a.u).slice(0, 8).map((t) => [`task:${t.id}`, t.text, t.done ? "done" : "task", t.done ? "Done" : placeOf(t).l?.name ?? "Inbox"])); // tasks only once you type; open ones first, newest first

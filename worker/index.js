@@ -21,7 +21,7 @@ export default {
     const origin = req.headers.get("Origin");
     const cors = {
       "Access-Control-Allow-Origin": ORIGINS.includes(origin) ? origin : ORIGINS[0],
-      "Access-Control-Allow-Methods": "GET, PUT, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, PUT, POST, DELETE, OPTIONS",
       "Access-Control-Allow-Headers": "If-Match, Content-Type, X-Write-Key",
       "Access-Control-Expose-Headers": "ETag",
       "Cache-Control": "no-store",
@@ -50,6 +50,34 @@ export default {
       if (Object.keys(subs).length) await env.BLOBS.put("p:" + id, JSON.stringify({ subs, rem })); else await env.BLOBS.delete("p:" + id);
       await setNext(env, id, Object.keys(subs).length ? rem : []);
       return reply(null, 204);
+    }
+    const im = new URL(req.url).pathname.match(/^\/i\/([0-9a-f]{64})$/);
+    if (im) { // Capture inbox: anyone with the capture key (?k=) can add; only the app, with the write key, can read, clear or set the key. Items are plain text until the app pulls them.
+      const id = im[1], url = new URL(req.url), q = await getJSON(env, "q:" + id), items = q.items ?? [], open = { "Access-Control-Allow-Origin": "*" };
+      if (req.method === "POST") {
+        if (!q.ck || q.ck !== url.searchParams.get("k")) return reply("forbidden", 403, open);
+        let text = (await req.text()).slice(0, 5000);
+        if (text.startsWith("{")) try { const j = JSON.parse(text); text = String(j.text ?? j.url ?? text).slice(0, 5000); } catch {}
+        text = text.trim();
+        if (!text) return reply("empty", 400, open);
+        if (items.length >= 100) return reply("inbox full", 429, open);
+        await env.BLOBS.put("q:" + id, JSON.stringify({ ck: q.ck, items: [...items, { id: crypto.randomUUID().replace(/-/g, "").slice(0, 16), text }] })); // shortcut: read-modify-write, two captures in the same instant can lose one
+        return reply(null, 204, open);
+      }
+      const { metadata } = await env.BLOBS.getWithMetadata(id);
+      if (!metadata?.w || metadata.w !== req.headers.get("X-Write-Key")) return reply("forbidden", 403);
+      if (req.method === "GET") return reply(JSON.stringify(items), 200, { "Content-Type": "application/json" });
+      if (req.method === "PUT") {
+        const ck = await req.text();
+        if (!/^[0-9a-f]{64}$/.test(ck)) return reply("bad key", 400);
+        await env.BLOBS.put("q:" + id, JSON.stringify({ ck, items }));
+        return reply(null, 204);
+      }
+      if (req.method === "DELETE") { // drop the first n items: the ones the app just took
+        await env.BLOBS.put("q:" + id, JSON.stringify({ ck: q.ck, items: items.slice(Math.max(0, +url.searchParams.get("n") || 0)) }));
+        return reply(null, 204);
+      }
+      return reply("method not allowed", 405);
     }
     const m = new URL(req.url).pathname.match(/^\/b\/([0-9a-f]{64})$/);
     if (!m) return reply("not found", 404);

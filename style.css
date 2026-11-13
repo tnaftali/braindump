@@ -5,7 +5,7 @@
   --accent: #a34c31; --accent-soft: #e8d5c8;
   --green: #4f6d43; --red: #9c3d33;
   --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
-  --title: "Domine", Georgia, serif;
+  --title: system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: ui-monospace, "JetBrains Mono", monospace;
   color-scheme: light;
 }
@@ -72,9 +72,9 @@ kbd { font: 12px var(--mono); background: var(--well); border: 1px solid var(--b
 @media (hover: none) { .hint { display: none; } form { margin-bottom: 12px; } }
 
 ul { list-style: none; margin: 0; padding: 0; }
-li { display: flex; align-items: flex-start; gap: 10px; min-height: 48px; padding: 11px 4px 11px 0; border-bottom: 1px solid var(--border); background: var(--bg); }
+li { display: flex; align-items: flex-start; gap: 10px; min-height: 40px; padding: 8px 4px 8px 0; font-size: 15px; line-height: 1.4; border-bottom: 1px solid var(--border); background: var(--bg); }
 li:first-child { border-top: 1px solid var(--border); }
-li input[type=checkbox] { appearance: none; flex: none; width: 18px; height: 18px; margin: 4px 0 0; border: 1.5px solid var(--border-strong); border-radius: 5px; cursor: pointer; display: grid; place-items: center; transition: background .15s, border-color .15s; }
+li input[type=checkbox] { appearance: none; flex: none; width: 18px; height: 18px; margin: 2px 0 0; border: 1.5px solid var(--border-strong); border-radius: 5px; cursor: pointer; display: grid; place-items: center; transition: background .15s, border-color .15s; }
 li input[type=checkbox]:hover { border-color: var(--accent); }
 li input[type=checkbox]:checked { background: var(--green); border-color: var(--green); }
 li input[type=checkbox]:checked::after { content: ""; width: 12px; height: 12px; background: var(--bg); -webkit-mask: var(--tick) center / contain no-repeat; mask: var(--tick) center / contain no-repeat; }
@@ -82,7 +82,7 @@ li input[type=checkbox]:checked::after { content: ""; width: 12px; height: 12px;
 .t { display: block; min-width: 0; overflow-wrap: anywhere; outline: none; border-radius: 4px; cursor: text; padding-top: 1px; }
 .t:focus { background: var(--panel); box-shadow: 0 0 0 4px var(--panel); }
 li.done .t { text-decoration: line-through; color: var(--faint); }
-.t a { color: var(--accent); text-decoration: none; background: var(--accent-soft); border-radius: 6px; padding: 0 8px; font-size: 14px; white-space: nowrap; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+.t a { color: var(--accent); text-decoration: none; background: var(--accent-soft); border-radius: 6px; padding: 0 8px; font-size: 13px; white-space: nowrap; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
 .t a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .cal { flex: none; width: 24px; height: 28px; margin: -2px 0 0; padding: 0; display: grid; place-items: center; background: none; border: 0; color: var(--faint); cursor: pointer; opacity: 0; }
 .cal svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -90,7 +90,7 @@ li.done .t { text-decoration: line-through; color: var(--faint); }
 li:hover .cal, .cal:focus-visible { opacity: 1; }
 li:not(.future) { cursor: grab; }
 li.drag { cursor: grabbing; }
-.when { flex: none; min-height: 28px; margin: -2px 0 0; padding: 0 8px; display: inline-flex; align-items: center; background: none; border: 0; border-radius: 8px; color: var(--faint); font: 600 13px var(--sans); cursor: pointer; white-space: nowrap; }
+.when { flex: none; min-height: 28px; margin: -2px 0 0; padding: 0 8px; display: inline-flex; align-items: center; background: none; border: 0; border-radius: 8px; color: var(--faint); font: 600 12px var(--sans); cursor: pointer; white-space: nowrap; }
 .when svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .chip { background: var(--accent-soft); color: var(--accent); }
 li.future { opacity: .55; }
@@ -110,7 +110,7 @@ li.sec.head .hx { opacity: 0; font-size: 20px; padding: 6px 10px; }
 li.sec.head:hover .hx { opacity: 1; }
 @media (hover: none) { li.sec.head .hx { opacity: 1; } }
 li.sec + li { border-top: 1px solid var(--border); }
-.area { display: block; max-width: 100%; margin: 0; padding: 0 0 0 1px; background: none; border: 0; border-radius: 4px; color: var(--faint); font: 14px/1.4 var(--sans); cursor: pointer; appearance: none; -webkit-appearance: none; text-overflow: ellipsis; }
+.area { flex: 0 1 auto; max-width: 34%; margin: 0; padding: 1px 0 0 8px; background: none; border: 0; border-radius: 4px; color: var(--faint); font: 13px/1.4 var(--sans); cursor: pointer; appearance: none; -webkit-appearance: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .area:hover { color: var(--text); }
 .x { flex: none; width: 40px; height: 40px; margin: -8px -4px 0 0; opacity: 0; background: none; border: 0; color: var(--faint); font-size: 22px; line-height: 1; cursor: pointer; }
 li:hover .x, .x:focus-visible { opacity: 1; }
@@ -209,8 +209,9 @@ li.sec.head .hc { padding: 6px 4px; color: var(--faint); font-size: 14px; width:
 /* sheet spacing */
 #whend #wtitle { height: 48px; margin: 0 0 4px; font: 600 17px var(--sans); }
 #whend .row input, #whend .row select, #whend #wtclear { margin: 0; }
-#whend .row.quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-#whend .row.quick button { height: 62px; padding: 0 4px; gap: 6px; font: 600 13px var(--sans); }
+#whend { width: min(480px, calc(100vw - 32px)); }
+#whend .row.quick { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+#whend .row.quick button { height: 62px; padding: 0 2px; gap: 6px; font: 600 12px var(--sans); }
 #whend .row.quick svg { width: 20px; height: 20px; }
 #whend .row.when { flex-wrap: nowrap; align-items: center; margin-top: 8px; }
 #whend .row.when input { flex: 1; min-width: 0; }
@@ -275,6 +276,7 @@ li .ci input[type=checkbox]::before { inset: -4px; }
 
 /* phone width: a long date chip wraps beside the text instead of squeezing it to a sliver; the date and time fields fit */
 @media (max-width: 480px) {
+  .area { max-width: 28%; font-size: 12px; padding-left: 4px; }
   li > .when { flex: 0 1 auto; max-width: 34%; min-height: 0; padding: 3px 6px; white-space: normal; text-align: right; line-height: 1.25; }
   #whend .row.when { gap: 6px; }
   #whend .row.when input { padding: 0 8px; font: 16px var(--sans); }
@@ -341,10 +343,16 @@ body.board #f, body.board .hint { display: none; }
 
 /* "#" area picker under the new-task box */
 #f { position: relative; }
-#hl { position: absolute; z-index: 5; top: calc(100% + 6px); left: 0; right: 0; list-style: none; margin: 0; padding: 4px; max-height: 240px; overflow-y: auto; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0, 0, 0, .18); }
-#hl li { padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 15px; }
-#hl li.on { background: var(--well); }
-#pk { margin: 0 0 8px; height: 28px; padding: 0 10px; border: 0; border-radius: 999px; font: 600 13px var(--sans); cursor: pointer; }
+.hl { position: fixed; z-index: 50; list-style: none; margin: 0; padding: 4px; max-height: 240px; overflow-y: auto; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0, 0, 0, .18); }
+.hl li { padding: 10px 12px; border: 0; border-radius: 8px; cursor: pointer; font-size: 15px; background: none; }
+.hl li.on { background: var(--well); }
+#pk, .pkc { margin: 0 0 8px; height: 28px; padding: 0 10px; border: 0; border-radius: 999px; font: 600 13px var(--sans); cursor: pointer; }
+.pkc { margin: 0 0 6px; }
+/* sheet selects and the Area box: our own chevron, inset from the edge, in place of the cramped native one */
+dialog select, #wlist { appearance: none; -webkit-appearance: none; padding-right: 36px; background-repeat: no-repeat; background-position: right 14px center; background-size: 14px; --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2357534b' stroke-width='2.500' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-image: var(--chev); }
+:root[data-theme="dark"] dialog select, :root[data-theme="dark"] #wlist { --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b7b5a9' stroke-width='2.500' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); }
+#wlist { font: 16px var(--sans); }
+#whend .foot2 button:not(.primary) { background: none; }
 li.hit { animation: hit 1.6s ease-out; }
 @keyframes hit { 0%, 40% { background: var(--accent-soft); } 100% { background: none; } }
 @media (prefers-reduced-motion: reduce) { li.hit { animation: none; } }

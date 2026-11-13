@@ -14,7 +14,6 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon.svg?v=4" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-180.png?v=4">
-<link href="https://fonts.googleapis.com/css2?family=Domine:wght@700&display=swap" rel="stylesheet" crossorigin>
 <link rel="stylesheet" href="style.css">
 <!-- Runs before paint so there is no theme flash. First visit follows the system. -->
 <script>
@@ -49,10 +48,9 @@
     <form id="f">
       <input id="in" placeholder="What's on your mind?" autocomplete="off" enterkeyhint="done" aria-label="New task">
       <button>Add</button>
-      <ul id="hl" role="listbox" aria-label="Areas and projects" hidden></ul>
     </form>
     <button id="pk" class="chip" type="button" title="Clear" hidden></button>
-    <p class="hint">Press <kbd>Enter</kbd> to add · <kbd>#</kbd> to pick an area · <kbd>/</kbd> to focus from anywhere · paste links, they become chips · click text to edit · drag or <kbd>Alt</kbd>+<kbd>↑</kbd><kbd>↓</kbd> to reorder</p>
+    <p class="hint"><kbd>#</kbd> area · <kbd>/</kbd> focus · <kbd>Ctrl</kbd> <kbd>K</kbd> go to · paste a link to add it</p>
   </header>
   <ul id="list"></ul>
   <div class="foot">
@@ -70,10 +68,10 @@
 <div id="toast" role="status" hidden></div>
 <dialog id="whend" aria-labelledby="whent">
   <h2 id="whent">Task details</h2>
-  <input id="wtitle" type="text" maxlength="500" autocomplete="off" aria-label="Task title">
+  <input id="wtitle" type="text" maxlength="500" autocomplete="off" placeholder="Title" aria-label="Task title">
   <div id="wlistrow" hidden>
     <p class="sub">Area</p>
-    <select id="wlist" aria-label="Area"></select>
+    <input id="wlist" type="text" placeholder="No area" autocomplete="off" role="combobox" aria-autocomplete="list" aria-label="Area">
   </div>
   <p class="sub">When</p>
   <div class="row quick">
@@ -81,6 +79,7 @@
     <button type="button" data-d="evening">Evening</button>
     <button type="button" data-d="tomorrow">Tomorrow</button>
     <button type="button" data-d="monday">Next week</button>
+    <button type="button" data-d="clear">No date</button>
   </div>
   <div class="row when">
     <input type="date" id="wdate" aria-label="Date">
@@ -104,8 +103,8 @@
   <div id="wchk"></div>
   <input id="wcadd" type="text" placeholder="+ Add a checklist item" maxlength="200" autocomplete="off" aria-label="Add a checklist item">
   <div class="row foot2">
-    <button class="danger" id="wclear" type="button">Clear date</button>
-    <button class="close" id="wclose" type="button">Done</button>
+    <button id="wcancel" type="button">Cancel</button>
+    <button class="primary" id="wclose" type="button" title="Ctrl+Enter">Done</button>
   </div>
 </dialog>
 <dialog id="kbar" aria-label="Go to">
@@ -150,6 +149,10 @@
       <button id="remt" type="button" hidden>Send a test</button>
     </div>
     <p id="remst" class="st" role="status"></p>
+    <p class="sub">Quick capture</p>
+    <p>Send a link or text here from an iPhone Shortcut, a bookmarklet or curl. Post it to the capture URL. The URL can add tasks, not read them. They arrive on the next sync.</p>
+    <button id="capc" type="button">Show capture URL</button>
+    <input id="capv" readonly hidden aria-label="Capture URL" onfocus="this.select()">
     <p class="sub">On your other device: open the link, or open Settings → paste the code. On iPhone the installed app and Safari keep separate data, so join inside the app.</p>
     <button class="danger" id="offb" type="button">Turn off on this device</button>
   </div>
