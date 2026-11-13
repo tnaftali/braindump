@@ -586,9 +586,11 @@ list.addEventListener("change", (e) => {
     return;
   }
   const finish = () => {
+    const before = e.target.checked && structuredClone(t); // undo restores the whole task: a repeating one gets its old date and checklist back
     if (e.target.checked && t.rep) { t.date = nextDate(t.date, t.rep, today()); t.c?.forEach((c) => { c.done = false; }); } // repeating: no done state, it moves to its next date with a fresh checklist
     else { t.done = e.target.checked; if (t.done) t.dt = now(); else delete t.dt; }
     touch(t); commit();
+    if (before) undoable(t.rep ? "Moved to next date" : "Task completed", () => { const i = tasks.indexOf(t); if (i < 0) return; tasks[i] = before; touch(before); commit(); });
   };
   const li = e.target.closest("li");
   if (!e.target.checked || li.classList.contains("completing") || matchMedia("(prefers-reduced-motion: reduce)").matches) return finish();
